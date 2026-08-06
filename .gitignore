@@ -18,3 +18,6 @@ __pycache__/
 .env
 .env.*
 !.env.example
+
+.claude/
+Pr\303\241ctica Data Wrangling.pdf"
