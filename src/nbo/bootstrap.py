@@ -18,6 +18,12 @@ REQUIRED_ARTIFACTS = (
 )
 
 
+def canonical_text_sha256(path: Path) -> str:
+    """Hash textual estable entre checkouts CRLF (Windows) y LF (Linux)."""
+    content = path.read_bytes().replace(b"\r\n", b"\n")
+    return hashlib.sha256(content).hexdigest()
+
+
 def check_environment(config_path: str | None = None) -> dict:
     config = load_config(config_path)
     data_dir = Path(config["project"]["data_dir"])
@@ -36,10 +42,11 @@ def check_environment(config_path: str | None = None) -> dict:
     data_hashes = {}
     for name in (CUSTOMER_FILE, CATALOG_FILE, HISTORY_FILE):
         path = data_dir / name
-        actual = hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
+        actual = canonical_text_sha256(path) if path.exists() else None
         data_hashes[name] = {
             "expected": expected_hashes.get(name), "actual": actual,
             "matches": bool(actual and expected_hashes.get(name) == actual),
+            "mode": "text_lf_v1",
         }
     manifest = None
     artifact_dir = None

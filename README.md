@@ -153,6 +153,8 @@ El motor utiliza exclusivamente los archivos de `dataset/`:
 
 Los archivos maestros nunca se modifican durante inferencia, feedback o activación. El estado operacional se almacena como eventos append-only en SQLite.
 
+`dataset/SHA256SUMS` protege el contenido de los tres maestros. El bootstrap usa el modo canónico `text_lf_v1`: normaliza exclusivamente finales de línea `CRLF/LF` antes de calcular SHA-256, por lo que un checkout en Windows y otro en Linux producen el mismo hash sin ocultar cambios de datos.
+
 Los CSV `*_limpio.csv` de la raíz pertenecen al trabajo exploratorio y no se usan para entrenar el motor, ya que sus agregados globales podrían introducir fuga de información.
 
 ## 4. Artefactos preentrenados

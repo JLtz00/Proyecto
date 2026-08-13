@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-from nbo.bootstrap import check_environment
+from nbo.bootstrap import canonical_text_sha256, check_environment
 from nbo.engine import NBOEngine
 
 
@@ -35,3 +35,15 @@ def test_engine_resolves_relative_manifest_from_custom_artifact_root(tmp_path):
     config_path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
     engine = NBOEngine(str(config_path), persist=False)
     assert engine.versions["model_version"] == "nbo_v2"
+
+
+def test_dataset_checksum_is_stable_between_lf_and_crlf(tmp_path):
+    lf = tmp_path / "lf.csv"
+    crlf = tmp_path / "crlf.csv"
+    lf.write_bytes(b"id,value\n1,alpha\n2,beta\n")
+    crlf.write_bytes(b"id,value\r\n1,alpha\r\n2,beta\r\n")
+    assert canonical_text_sha256(lf) == canonical_text_sha256(crlf)
+
+    changed = tmp_path / "changed.csv"
+    changed.write_bytes(b"id,value\n1,alpha\n2,gamma\n")
+    assert canonical_text_sha256(lf) != canonical_text_sha256(changed)

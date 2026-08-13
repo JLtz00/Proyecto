@@ -186,7 +186,7 @@ Los eventos pueden almacenar canal, oferta, medio probatorio y referencia opcion
 
 ## 9. Calidad y pruebas
 
-La suite vigente contiene **49 pruebas automatizadas**, incluidas validaciones de demo, aislamiento público, evaluación v3, métricas ejecutivas y explicabilidad CatBoost. Cubre:
+La suite vigente contiene **50 pruebas automatizadas**, incluidas validaciones de demo, aislamiento público, evaluación v3, métricas ejecutivas, explicabilidad CatBoost y checksums portables entre Windows/Linux. Cubre:
 
 - Contrato y calidad de datos.
 - Nulos semánticos y sentinel de datos ilimitados.
