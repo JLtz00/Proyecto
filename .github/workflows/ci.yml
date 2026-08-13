@@ -28,4 +28,8 @@ jobs:
         run: python -m nbo.evaluation_v3 --max-events 50 --bootstrap-iterations 20 --output-dir artifacts/ci-evaluation
       - name: Secret pattern check
         run: |
-          ! git grep -nEi '(ghp_|github_pat_|sk-[A-Za-z0-9]{20,}|password[[:space:]]*=[[:space:]]*[^$])' -- ':!artifacts/*.joblib'
+          secret_pattern='(gh''p_|github_''pat_|s''k-[A-Za-z0-9]{20,}|pass''word[[:space:]]*=[[:space:]]*[^$])'
+          if git grep -nEi "$secret_pattern" -- ':!artifacts/*.joblib'; then
+            echo "Potential secret detected in tracked files."
+            exit 1
+          fi
