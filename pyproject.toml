@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=65", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -25,10 +25,12 @@ dependencies = [
 [project.optional-dependencies]
 explain = ["shap>=0.46"]
 dev = ["pytest>=8.2", "pytest-cov>=5.0"]
+media = ["Pillow>=10.4", "imageio-ffmpeg>=0.5"]
 
 [project.scripts]
 nbo-train = "nbo.training:main"
 nbo-evaluate = "nbo.evaluation:main"
+nbo-evaluate-v3 = "nbo.evaluation_v3:main"
 nbo-batch = "nbo.batch:main"
 nbo-report = "nbo.reporting:main"
 nbo-audit = "nbo.audit:main"
@@ -41,3 +43,6 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+filterwarnings = [
+  "ignore:Using .* with .* is deprecated",
+]

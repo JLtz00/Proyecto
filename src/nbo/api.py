@@ -10,6 +10,7 @@ from .config import load_config
 from .engine import ArtifactUnavailable, NBOEngine
 from .economics import simulate_economics
 from .llm_renderer import render_playbook
+from .jury import executive_report
 from .persistence import DecisionStore, StateVersionConflict
 from .schemas import (
     BatchRequest, DemoJourneyRequest, DemoJourneyResponse, EconomicSimulationRequest,
@@ -21,7 +22,7 @@ from .schemas import (
 from .simulation import demo_journey, simulate
 
 
-app = FastAPI(title="Movistar Next Best Offer API", version="1.4.0")
+app = FastAPI(title="Movistar Next Best Offer API", version="1.5.0")
 
 
 @lru_cache(maxsize=1)
@@ -93,8 +94,13 @@ def feedback(request: FeedbackRequest) -> FeedbackResponse:
 
 
 @app.get("/api/v1/nbo/metrics")
-def metrics() -> dict:
-    return get_store().business_metrics()
+def metrics(source: str = Query(default="operational", pattern="^(operational|demo)$")) -> dict:
+    return executive_report(get_store().business_metrics(), source)
+
+
+@app.get("/api/v1/nbo/executive-report")
+def executive_metrics(source: str = Query(default="operational", pattern="^(operational|demo)$")) -> dict:
+    return executive_report(get_store().business_metrics(), source)
 
 
 @app.post("/api/v1/nbo/customer-events", status_code=201, response_model=CustomerEventResponse)

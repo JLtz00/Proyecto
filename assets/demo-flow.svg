@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-labelledby="title desc">
+  <title id="title">Recorrido adaptativo Closed-Loop NBO</title>
+  <desc id="desc">Cinco pasos desde completar hogar hasta recuperar una conversación Movistar Total.</desc>
+  <rect width="1200" height="300" fill="#0b1015"/>
+  <style>.t{font:600 18px Inter,Segoe UI,sans-serif;fill:#edf1f4}.s{font:14px Inter,Segoe UI,sans-serif;fill:#93a0aa}.n{font:700 15px Inter,Segoe UI,sans-serif;fill:#07100e}.b{fill:#111820;stroke:#33423f;stroke-width:2}.c{fill:#79a99d}.l{stroke:#46665f;stroke-width:3}</style>
+  <text x="55" y="48" class="t" font-size="25">Una decisión que evoluciona con cada interacción</text>
+  <line x1="135" y1="145" x2="1065" y2="145" class="l"/>
+  <g transform="translate(110 145)"><circle r="26" class="c"/><text x="-5" y="6" class="n">1</text><rect x="-75" y="43" width="150" height="63" rx="8" class="b"/><text x="-56" y="68" class="t">Falta hogar</text><text x="-55" y="91" class="s">NBO · OF005</text></g>
+  <g transform="translate(350 145)"><circle r="26" class="c"/><text x="-5" y="6" class="n">2</text><rect x="-82" y="43" width="164" height="63" rx="8" class="b"/><text x="-59" y="68" class="t">Aceptación</text><text x="-65" y="91" class="s">Intención, no producto</text></g>
+  <g transform="translate(590 145)"><circle r="26" class="c"/><text x="-5" y="6" class="n">3</text><rect x="-82" y="43" width="164" height="63" rx="8" class="b"/><text x="-65" y="68" class="t">Activación</text><text x="-69" y="91" class="s">Elegible MT · OF022</text></g>
+  <g transform="translate(830 145)"><circle r="26" class="c"/><text x="-5" y="6" class="n">4</text><rect x="-82" y="43" width="164" height="63" rx="8" class="b"/><text x="-68" y="68" class="t">Rechazo precio</text><text x="-58" y="91" class="s">Cooldown OF022</text></g>
+  <g transform="translate(1070 145)"><circle r="26" class="c"/><text x="-5" y="6" class="n">5</text><rect x="-82" y="43" width="164" height="63" rx="8" class="b"/><text x="-62" y="68" class="t">Recuperación</text><text x="-66" y="91" class="s">MT Básico + fecha</text></g>
+</svg>

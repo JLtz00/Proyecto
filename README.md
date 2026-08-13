@@ -2,12 +2,46 @@
 
 Motor reproducible de Next Best Action que reconstruye el estado vigente de cada cliente, prioriza su ruta hacia Movistar Total, recomienda una oferta y un canal, entrega un guion comercial y aprende operacionalmente de contactos, rechazos, aceptaciones y activaciones.
 
+[![NBO quality gate](https://github.com/JLtz00/Proyecto/actions/workflows/ci.yml/badge.svg)](https://github.com/JLtz00/Proyecto/actions/workflows/ci.yml)
+
+> **De una oferta estática a una decisión que evoluciona con cada interacción comercial.**
+
+![Recorrido adaptativo](assets/demo-flow.svg)
+
+## Para el jurado
+
+El diferencial no es únicamente ordenar ofertas. El sistema reconstruye el estado, evita productos incompatibles o activos, acompaña al asesor, conserva evidencia y vuelve a decidir después del resultado real.
+
+- Demo guiada y no persistente: `streamlit run streamlit_app.py`, vista **Demo guiada**.
+- Video subtitulado de 75 segundos: [ver demo MP4](assets/demo_jury.mp4).
+- Pitch de tres minutos: [guion](docs/pitch_3_minutos.md).
+- Capturas reales: [estado inicial](assets/screenshots/demo-inicio.png), [activación](assets/screenshots/demo-activacion.png) e [impacto](assets/screenshots/impacto-evidencia.png); [guía reproducible](docs/capturas_demo.md).
+- Evidencia completa: [evaluación offline v3](reports/evaluation_v3.md).
+- Preguntas técnicas: [respuestas para el jurado](docs/preguntas_jurado.md).
+- Despliegue público: [guía para Streamlit Community Cloud](docs/despliegue_streamlit.md).
+
+Resultados defendibles:
+
+| Evidencia | Resultado |
+|---|---:|
+| Ranking v3 Hit@1, universo evaluable | 12.30% |
+| Ranking v3 Hit@3, universo evaluable | 36.56% |
+| Ranking v3 NDCG@3, universo evaluable | 0.2596 |
+| Mejora NDCG@3 frente al baseline comparable | 17.46% |
+| Cobertura de aceptaciones evaluables | 82.89% |
+| NDCG@3 absoluto sobre todas las aceptaciones | 0.2151 |
+| Ofertas distintas en Top 1 | 16 |
+
+Las métricas son offline y observacionales. El sistema no afirma uplift, ventas incrementales ni reducción causal de churn.
+
+![Arquitectura Closed-Loop NBO](assets/architecture.svg)
+
 El repositorio incluye:
 
 - Los tres CSV originales usados por el proyecto.
 - Código completo de validación, features, entrenamiento, evaluación e inferencia.
 - `nbo_v2` preentrenado para probar el sistema inmediatamente.
-- API FastAPI `1.4.0`.
+- API FastAPI `1.5.0`.
 - Mesa comercial Streamlit para el asesor.
 - Persistencia SQLite para decisiones, feedback y eventos.
 - Pruebas automatizadas y casos de demostración reproducibles.
@@ -27,7 +61,8 @@ cd Proyecto
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
+python -m pip install -r requirements-dev.lock
+python -m pip install -e . --no-deps
 
 nbo-check
 streamlit run streamlit_app.py
@@ -54,7 +89,8 @@ cd Proyecto
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
+python -m pip install -r requirements-dev.lock
+python -m pip install -e . --no-deps
 
 python -m nbo.training
 nbo-check
@@ -175,7 +211,7 @@ La verificación comprueba:
 
 Debe terminar con `"ready": true`.
 
-## 6. Mesa comercial del asesor
+## 6. Aplicación para asesor y jurado
 
 Iniciar con:
 
@@ -183,13 +219,17 @@ Iniciar con:
 streamlit run streamlit_app.py
 ```
 
-La interfaz está diseñada como una única superficie de trabajo. Presenta primero lo que el asesor necesita para actuar y mantiene la trazabilidad técnica en segundo nivel.
+La aplicación contiene tres vistas con responsabilidades separadas:
+
+- **Demo guiada:** recorrido aislado y reiniciable para explicar el closed loop en 90 segundos.
+- **Mesa del asesor:** consulta y operación persistente en entornos locales o controlados.
+- **Impacto y evidencia:** funnel, MT, canales, objeciones, economía y evaluación offline.
 
 Incluye:
 
 - Estado y etapa actual del cliente.
 - Oferta, canal, precio, momento y prioridad.
-- Probabilidad de contacto, aceptación y venta.
+- Propensión contextual, soporte histórico y venta estimada.
 - Objetivo comercial y siguiente paso.
 - Guion con apertura, pregunta, argumento, beneficio y cierre.
 - Objeciones probables y respuesta sugerida.
@@ -204,6 +244,8 @@ Incluye:
 - Historial de eventos operacionales.
 
 La estética usa colores oscuros y tranquilos, sin degradados y con uso limitado de contenedores.
+
+En despliegue público, establecer `NBO_PUBLIC_DEMO=true` oculta la operación persistente y deja únicamente demo y evidencia. Cada recorrido de demo es aislado por sesión y nunca escribe en SQLite.
 
 ### Casos de referencia
 
@@ -220,7 +262,7 @@ Estos clientes aparecen como accesos rápidos en la barra lateral.
 En **Conexión** existen dos opciones:
 
 - `Motor local`: predeterminada. Carga `nbo_v2` directamente y no requiere Uvicorn.
-- `API remota`: usa una API FastAPI activa y compatible con versión `1.4.0`.
+- `API remota`: usa una API FastAPI activa y compatible con versión `1.5.0`.
 
 Si se elige API remota:
 
@@ -258,6 +300,7 @@ Endpoints principales:
 | `GET /api/v1/nbo/customer-state/{cliente_id}/events` | Lista eventos operacionales |
 | `GET /api/v1/nbo/learning/readiness` | Evalúa soporte para entrenar un challenger |
 | `GET /api/v1/nbo/metrics` | Devuelve métricas operacionales |
+| `GET /api/v1/nbo/executive-report?source=operational\|demo` | Funnel ejecutivo sin mezclar operación y simulación |
 | `POST /api/v1/nbo/simulate` | Ejecuta escenarios sin persistencia |
 | `POST /api/v1/nbo/demo/journey` | Reproduce el recorrido adaptativo |
 | `POST /api/v1/nbo/economics/simulate` | Calcula valor esperado con supuestos explícitos |
@@ -335,6 +378,7 @@ Ejecutar:
 ```powershell
 python -m nbo.evaluation --tune-ranking
 python -m nbo.evaluation
+python -m nbo.evaluation_v3
 python -m nbo.audit
 ```
 
@@ -346,13 +390,18 @@ La evaluación histórica:
 - Compara contra oferta popular global, por segmento y por canal.
 - Reporta Hit@1, Hit@3, NDCG@3, cobertura, diversidad y métricas MT.
 
-La evaluación reservada actual obtuvo:
+La evaluación v3 usa como unidad cada evento aceptado, conserva múltiples eventos del mismo cliente y agrega intervalos bootstrap agrupados por cliente. Obtuvo:
 
-- Hit@1: `0.1096`.
-- Hit@3: `0.3365`.
-- NDCG@3: `0.2376`.
-- Mejora relativa NDCG@3: `7.24%`.
-- Gate final: aprobado.
+- 14,353 eventos aceptados en test.
+- Cobertura evaluable: `82.89%`.
+- Hit@1 condicionado: `12.30%`; absoluto: `10.19%`.
+- Hit@3 condicionado: `36.56%`; absoluto: `30.30%`.
+- NDCG@3 condicionado: `0.2596`; absoluto: `0.2151`.
+- Mejora NDCG@3 frente al mejor baseline comparable: `17.46%`.
+- IC 95% NDCG@3: `[0.2514, 0.2670]`.
+- 16 ofertas diferentes como Top 1; concentración máxima `26.15%`.
+
+La evaluación v2 original permanece disponible para reproducir la comparación histórica que obtuvo `+7.24%` de NDCG@3. La v3 añade cobertura absoluta, unidad por evento, bootstrap, cortes y ablations.
 
 Estas métricas describen ranking offline bajo la política histórica; no prueban uplift ni efecto causal.
 
@@ -461,7 +510,7 @@ catálogo × canal ──→ elegibilidad ──→ probabilidades ──→ ran
                                                             │
                                          ┌──────────────────┴───────────────┐
                                          ↓                                  ↓
-                                  FastAPI 1.4.0                     Mesa Streamlit
+                                  FastAPI 1.5.0                     Mesa Streamlit
                                          │                                  │
                                          └──────────→ SQLite ←───────────────┘
 ```
@@ -498,11 +547,11 @@ tests/                       Pruebas automatizadas
 |---|---|
 | Modelo | `nbo_v2` |
 | Features | `features_v2` |
-| Reglas | `rules_v4` |
+| Reglas | `rules_v5` |
 | Playbook | `playbook_v2` |
-| Decisión | `decision_v3` |
+| Decisión | `decision_v4` |
 | Catálogo | `catalog_2026_08` |
-| API | `1.4.0` |
+| API | `1.5.0` |
 
 El modelo activo no cambia durante la adaptación operacional. Los cambios inmediatos provienen del estado vigente y del comportamiento observado.
 
@@ -513,6 +562,10 @@ El modelo activo no cambia durante la adaptación operacional. Los cambios inmed
 ```powershell
 streamlit run streamlit_app.py --server.address 0.0.0.0 --server.port 8501
 ```
+
+### Streamlit Community Cloud
+
+El repositorio incluye `requirements.txt`, `runtime.txt`, tema en `.streamlit/config.toml` y modo público aislado. Seguir [la guía de despliegue](docs/despliegue_streamlit.md); la vinculación final de la URL requiere autorización del propietario en Streamlit Cloud.
 
 ### API independiente
 
@@ -540,7 +593,8 @@ Comprobar que existan `artifacts/current.json` y `artifacts/nbo_v2/`.
 Detener procesos antiguos, reinstalar el paquete editable y reiniciar Streamlit:
 
 ```powershell
-python -m pip install -e ".[dev]"
+python -m pip install -r requirements-dev.lock
+python -m pip install -e . --no-deps
 streamlit run streamlit_app.py
 ```
 
@@ -554,7 +608,7 @@ Usar `Motor local` en el panel **Conexión**. Si se usa `API remota`, verificar:
 Invoke-RestMethod http://127.0.0.1:8000/health
 ```
 
-La respuesta debe incluir `"api_version": "1.4.0"`.
+La respuesta debe incluir `"api_version": "1.5.0"`.
 
 ### Puerto 8501 ocupado
 

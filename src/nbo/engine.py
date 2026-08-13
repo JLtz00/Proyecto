@@ -83,6 +83,7 @@ class NBOEngine:
         }
         self.smoothing_alpha = float(self.metadata.get("selected_smoothing_alpha", self.config["features"]["smoothing_alpha"]))
         self._summary_cache: dict[str, object] = {}
+        self._timing_cache: dict[str, pd.DataFrame] = {}
         ranking_path = artifact_dir / "ranking_weights.json"
         self.scoring = self.config["scoring"] if not ranking_path.exists() else json.loads(ranking_path.read_text(encoding="utf-8"))["weights"]
         self.store = DecisionStore(self.config["project"]["database_path"]) if persist else None
@@ -122,18 +123,91 @@ class NBOEngine:
                 break
         return Explanation(positive=positive[:3] or ["La combinación de perfil, oferta y canal obtiene el mejor ajuste disponible"], negative=negative[:2])
 
+    def _timing_history(self, as_of: pd.Timestamp) -> pd.DataFrame:
+        """Tasas leakage-safe por día, segmento y canal para oportunidad comercial."""
+        cutoff = pd.Timestamp(as_of).tz_localize(None) if pd.Timestamp(as_of).tzinfo else pd.Timestamp(as_of)
+        key = cutoff.isoformat()
+        if key in self._timing_cache:
+            return self._timing_cache[key]
+        events = self.history.loc[self.history["fecha"].lt(cutoff)].copy()
+        events["weekday"] = events["fecha"].dt.dayofweek
+        events["contact"] = events["contactabilidad"].eq("contactado").astype(int)
+        if "tipo_cliente" not in events:
+            events["tipo_cliente"] = events["cliente_id"].map(
+                self.customer_index["tipo_cliente"]
+            )
+        channel = events.groupby("canal", observed=True)["contact"].agg(["sum", "count"])
+        channel["base_rate"] = channel["sum"] / channel["count"].clip(lower=1)
+        grouped = events.groupby(
+            ["tipo_cliente", "canal", "weekday"], observed=True
+        )["contact"].agg(["sum", "count"]).reset_index()
+        grouped = grouped.join(channel[["base_rate"]], on="canal")
+        alpha = float(self.config.get("timing", {}).get("smoothing_alpha", 100.0))
+        grouped["rate"] = (
+            grouped["sum"] + alpha * grouped["base_rate"]
+        ) / (grouped["count"] + alpha)
+        grouped["lift"] = grouped["rate"] - grouped["base_rate"]
+        self._timing_cache[key] = grouped
+        return grouped
+
     @staticmethod
-    def _timing(row: pd.Series) -> Timing:
-        if row["penalizacion_cooldown"] > 0:
-            moment = "recontactar_luego"
-        elif row["canal"] == "Digital":
-            moment = "proxima_interaccion_digital"
-        else:
-            moment = "proximo_contacto_asesor"
+    def _next_weekday(reference: pd.Timestamp, weekday: int) -> pd.Timestamp:
+        delta = (weekday - reference.dayofweek) % 7
+        return reference.normalize() + pd.Timedelta(days=delta)
+
+    def _timing(self, row: pd.Series) -> Timing:
+        raw_reference = row.get("_state_as_of", self.config["features"]["as_of_date"])
+        reference = pd.Timestamp(raw_reference)
+        if reference.tzinfo is not None:
+            reference = reference.tz_localize(None)
         urgency = "alta" if row["p_venta"] >= 0.55 and row["fatiga_comercial"] < 0.5 else "media" if row["p_venta"] >= 0.30 else "baja"
         if row["penalizacion_cooldown"] > 0 or row["fatiga_comercial"] > 0.7:
             urgency = "baja"
-        return Timing(momento=moment, urgencia=urgency)
+
+        if row["penalizacion_cooldown"] > 0:
+            rejected_at = pd.Timestamp(row["last_rejection_date"])
+            recommended = max(
+                reference.normalize(),
+                rejected_at.normalize() + pd.Timedelta(days=int(self.config["rules"]["rejection_block_days"]) + 1),
+            )
+            return Timing(
+                momento="recontactar_luego", urgencia=urgency,
+                recommended_date=recommended.date().isoformat(),
+                recommended_weekday=("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")[recommended.dayofweek],
+                trigger="cooldown_complete", basis="cooldown_operational",
+                support=0, confidence="alta", is_model_optimized=False,
+            )
+
+        summary = self._timing_history(pd.Timestamp(self.config["features"]["as_of_date"]))
+        matches = summary.loc[
+            summary["tipo_cliente"].astype(str).eq(str(row["tipo_cliente"]))
+            & summary["canal"].astype(str).eq(str(row["canal"]))
+        ]
+        timing_cfg = self.config.get("timing", {})
+        minimum = int(timing_cfg.get("min_support", 50))
+        min_lift = float(timing_cfg.get("min_lift", 0.02))
+        useful = matches.loc[(matches["count"] >= minimum) & (matches["lift"] >= min_lift)]
+        if not useful.empty:
+            best = useful.sort_values(["rate", "count"], ascending=False).iloc[0]
+            recommended = self._next_weekday(reference, int(best["weekday"]))
+            support = int(best["count"])
+            confidence = "alta" if support >= minimum * 4 else "media"
+            return Timing(
+                momento="proxima_oportunidad_recomendada", urgencia=urgency,
+                recommended_date=recommended.date().isoformat(),
+                recommended_weekday=("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")[recommended.dayofweek],
+                trigger="historical_contact_window", basis="segment_channel_weekday_rate",
+                support=support, confidence=confidence, is_model_optimized=True,
+            )
+
+        moment = "proxima_interaccion_digital" if row["canal"] == "Digital" else "proximo_contacto_asesor"
+        return Timing(
+            momento=moment, urgencia=urgency, recommended_date=reference.date().isoformat(),
+            recommended_weekday=("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")[reference.dayofweek],
+            trigger="next_interaction", basis="fallback_operational",
+            support=int(matches["count"].sum()) if not matches.empty else 0,
+            confidence="baja", is_model_optimized=False,
+        )
 
     @staticmethod
     def _commercial_content(customer: pd.Series, row: pd.Series, explanation: Explanation) -> tuple[str, str, str, list[str]]:

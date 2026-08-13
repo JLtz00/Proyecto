@@ -4,10 +4,10 @@ project:
   artifact_dir: artifacts
   database_path: artifacts/nbo.sqlite3
   feature_version: features_v2
-  rules_version: rules_v4
+  rules_version: rules_v5
   catalog_version: catalog_2026_08
   playbook_version: playbook_v2
-  decision_schema_version: decision_v3
+  decision_schema_version: decision_v4
   experiment_version: playbook_ab_v1
   model_version: nbo_v2
 
@@ -75,6 +75,11 @@ confidence:
   medium_min_support: 5
   high_min_channel_contacts: 20
   high_min_offer_exposures: 5
+
+timing:
+  min_support: 50
+  min_lift: 0.02
+  smoothing_alpha: 100.0
 
 experiments:
   playbook_seed: 42

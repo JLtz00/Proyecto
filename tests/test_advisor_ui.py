@@ -56,15 +56,26 @@ def test_alternatives_are_reduced_to_actionable_columns():
 def test_streamlit_dashboard_empty_state_renders_without_errors():
     app = AppTest.from_file(Path(__file__).parents[1] / "streamlit_app.py").run(timeout=30)
     assert not app.exception
-    assert app.title[0].value == "Siguiente mejor conversación"
-    assert app.button[0].label == "Consultar cliente"
+    assert app.title[0].value == "De una oferta estática a una decisión que aprende"
+    assert {button.label for button in app.button} == {"Anterior", "Reiniciar", "Siguiente"}
 
 
 def test_reference_cases_are_present_and_local_mode_is_default():
     app = AppTest.from_file(Path(__file__).parents[1] / "streamlit_app.py").run(timeout=30)
+    view = next(radio for radio in app.radio if radio.label == "Vista")
+    view.set_value("Mesa del asesor")
+    app.run(timeout=30)
     labels = [button.label for button in app.button]
     assert "CLI000001  ·  Completar hogar" in labels
     assert "CLI000013  ·  Elegible MT" in labels
     assert "CLI000018  ·  Cliente MT" in labels
     origin = next(radio for radio in app.radio if radio.label == "Origen")
     assert origin.value == "Motor local"
+
+
+def test_public_demo_hides_persistent_advisor(monkeypatch):
+    monkeypatch.setenv("NBO_PUBLIC_DEMO", "true")
+    app = AppTest.from_file(Path(__file__).parents[1] / "streamlit_app.py").run(timeout=30)
+    view = next(radio for radio in app.radio if radio.label == "Vista")
+    assert "Mesa del asesor" not in view.options
+    assert set(view.options) == {"Demo guiada", "Impacto y evidencia"}

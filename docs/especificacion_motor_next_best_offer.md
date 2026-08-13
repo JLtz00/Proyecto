@@ -3316,13 +3316,13 @@ la API/dashboard y consultar un `cliente_id` obteniendo una oferta,
 canal, probabilidades, explicación, objeción y rebate, entonces el MVP
 cumple la especificación.
 
-# 51. Extensión closed-loop operacional (API 1.4.0)
+# 51. Extensión closed-loop operacional (API 1.5.0)
 
 La inferencia operacional reconstruye el estado como perfil maestro más un ledger append-only `customer_state_events`, ordenado por `effective_at`, `recorded_at` y `event_id`. Los CSV originales no se modifican. Cada escritura exige `idempotency_key` y `expected_state_version`; una corrección se expresa como un nuevo evento que referencia `correction_of_event_id`.
 
 Eventos admitidos: `product_activated`, `product_cancelled`, `usage_updated`, `billing_updated`, `preferred_channel_changed`, `mt_eligibility_overridden` y `customer_attribute_corrected`. La aceptación solo registra intención. La activación exige evidencia y, cuando incluye `decision_id`, valida cliente, candidato y aceptación previa.
 
-La recomendación normal usa el estado vigente y persiste `state_version`, snapshot mínimo e IDs de eventos aplicados bajo `decision_v3` y `rules_v4`. La evaluación histórica y `recommend_as_of` usan exclusivamente el perfil maestro y el histórico del dataset. La adaptación inmediata actualiza soporte jerárquico, fatiga y cooldown sin reentrenar ni modificar `nbo_v2`.
+La recomendación normal usa el estado vigente y persiste `state_version`, snapshot mínimo e IDs de eventos aplicados bajo `decision_v4` y `rules_v5`. La evaluación histórica y `recommend_as_of` usan exclusivamente el perfil maestro y el histórico del dataset. La adaptación inmediata actualiza soporte jerárquico, fatiga y cooldown sin reentrenar ni modificar `nbo_v2`.
 
 Endpoints públicos:
 

@@ -95,6 +95,21 @@ class AdvisorApi:
     def activate_product(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self._request("POST", "/api/v1/nbo/customer-events", json=payload)
 
+    def metrics(self, source: str = "operational") -> dict[str, Any]:
+        return self._request("GET", "/api/v1/nbo/executive-report", params={"source": source})
+
+    def demo_journey(self, cliente_id: str = "CLI000001", motivo: str = "precio") -> dict[str, Any]:
+        return self._request(
+            "POST", "/api/v1/nbo/demo/journey",
+            json={"cliente_id": cliente_id, "motivo_rechazo": motivo},
+        )
+
+    def economics(self, cliente_id: str, assumptions: dict[str, Any]) -> dict[str, Any]:
+        return self._request(
+            "POST", "/api/v1/nbo/economics/simulate",
+            json={"cliente_id": cliente_id, "assumptions": assumptions},
+        )
+
 
 def percentage(value: float | int | None) -> str:
     return f"{float(value or 0):.0%}"

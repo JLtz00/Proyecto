@@ -35,6 +35,13 @@ class Objection(BaseModel):
 class Timing(BaseModel):
     momento: str
     urgencia: Literal["alta", "media", "baja"]
+    recommended_date: str | None = None
+    recommended_weekday: str | None = None
+    trigger: str = "next_interaction"
+    basis: str = "fallback_operational"
+    support: int = Field(default=0, ge=0)
+    confidence: Literal["baja", "media", "alta"] = "baja"
+    is_model_optimized: bool = False
 
 
 class Recommendation(BaseModel):

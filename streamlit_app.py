@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import html
+import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -145,6 +147,11 @@ h2 { letter-spacing: -.02em; }
 .event-name { font-size: .82rem; color: var(--text); font-weight: 600; }
 .event-meta { font-size: .72rem; color: var(--muted); margin-top: .22rem; }
 
+.journey-track { display: flex; gap: .35rem; margin: 1.1rem 0 1.5rem; }
+.journey-segment { height: 4px; flex: 1; background: var(--line); border-radius: 3px; }
+.journey-segment.active { background: var(--accent); }
+.proof-note { border-left: 2px solid var(--accent); padding: .7rem .9rem; color: #cbd4d9; background: #101920; }
+
 .empty-state {
     max-width: 650px; padding: 4.4rem 0 2rem; margin: 0 auto; text-align: center;
 }
@@ -246,6 +253,192 @@ def refresh_context(api: Any, cliente_id: str) -> None:
     set_context(load_context(api, cliente_id))
 
 
+def render_guided_demo(api: Any) -> None:
+    st.markdown('<div class="eyebrow">Demo aislada · 90 segundos</div>', unsafe_allow_html=True)
+    st.title("De una oferta estática a una decisión que aprende")
+    st.markdown(
+        '<p class="page-subtitle">Recorre el ciclo completo sin modificar datos maestros ni persistir operaciones.</p>',
+        unsafe_allow_html=True,
+    )
+    try:
+        journey = api.demo_journey("CLI000001", "precio")
+    except AdvisorApiError as exc:
+        st.error(str(exc), icon=None)
+        return
+
+    steps = journey["steps"]
+    requested = st.query_params.get("step", "0")
+    try:
+        index = min(max(int(requested), 0), len(steps) - 1)
+    except (TypeError, ValueError):
+        index = 0
+    labels = {
+        "initial": ("1 · Estado inicial", "Falta internet hogar; el motor prioriza completar la ruta hacia MT."),
+        "accepted": ("2 · Aceptación", "Se registra intención comercial, pero los productos y la versión todavía no cambian."),
+        "activated": ("3 · Activación confirmada", "La evidencia de provisión cambia el estado y habilita Movistar Total."),
+        "rejected": ("4 · Rechazo por precio", "OF022 entra en cooldown y el motor evita repetir una conversación inadecuada."),
+        "recontact": ("5 · Recuperación", "En la fecha permitida se conserva la ruta MT con un tier inferior."),
+    }
+    result_by_step = {
+        "initial": journey["initial"], "accepted": journey.get("after_acceptance"),
+        "activated": journey.get("after_activation"), "rejected": journey["immediate_after_rejection"],
+        "recontact": journey["at_recontact"],
+    }
+    step = steps[index]
+    result = result_by_step[step["step"]]
+    title, description = labels[step["step"]]
+    st.markdown(
+        '<div class="journey-track">' + ''.join(
+            f'<span class="journey-segment {"active" if position <= index else ""}"></span>'
+            for position in range(len(steps))
+        ) + '</div>', unsafe_allow_html=True,
+    )
+    st.markdown(f'<div class="eyebrow">{safe(title)}</div>', unsafe_allow_html=True)
+    st.subheader(result["recommendation"]["nombre_oferta"])
+    st.write(description)
+    a, b, c, d = st.columns(4)
+    a.metric("Etapa MT", label_stage(step["mt_stage"]))
+    b.metric("Estado", f'v{step["state_version"]}')
+    b.caption("Sin cambio" if step["step"] == "accepted" else "Versión reconstruida")
+    c.metric("Oferta", result["recommendation"]["oferta_id"])
+    d.metric("Canal", result["recommendation"]["canal"])
+    st.markdown(
+        f'<div class="proof-note"><strong>Qué demuestra:</strong> {safe(description)}</div>',
+        unsafe_allow_html=True,
+    )
+    left, middle, right = st.columns([1, 1, 1])
+    if left.button("Anterior", disabled=index == 0, width="stretch"):
+        st.query_params.update({"view": "demo", "step": str(index - 1)})
+        st.rerun()
+    if middle.button("Reiniciar", width="stretch"):
+        st.session_state.pop("advisor_context", None)
+        st.query_params.update({"view": "demo", "step": "0"})
+        st.rerun()
+    if right.button("Siguiente", type="primary", disabled=index == len(steps) - 1, width="stretch"):
+        st.query_params.update({"view": "demo", "step": str(index + 1)})
+        st.rerun()
+    with st.expander("Trazabilidad del paso"):
+        trace = step.get("decision_trace") or result.get("decision_trace", {})
+        st.json({
+            "evento_que_produciria_el_cambio": journey["events_to_register"],
+            "productos_cambiaron": step.get("products_changed", False),
+            "decision_trace": trace,
+        }, expanded=False)
+    st.caption("Demo determinista y no persistente. Las cifras mostradas son estimaciones offline, no resultados comerciales reales.")
+
+
+def render_impact(api: Any) -> None:
+    st.markdown('<div class="eyebrow">Impacto y evidencia</div>', unsafe_allow_html=True)
+    st.title("Del ofrecimiento a la activación")
+    st.markdown(
+        '<p class="page-subtitle">Visión ejecutiva separada del espacio operativo del asesor.</p>',
+        unsafe_allow_html=True,
+    )
+    source_label = st.radio(
+        "Fuente", ["Escenario demostrativo", "Operación local"], horizontal=True,
+        help="Los datos simulados nunca se mezclan con la base operacional.",
+    )
+    source = "demo" if source_label == "Escenario demostrativo" else "operational"
+    metrics = api.metrics(source)
+    if metrics["is_simulated"]:
+        st.warning(metrics["disclaimer"], icon=None)
+    else:
+        st.info(metrics["disclaimer"], icon=None)
+
+    funnel = metrics["funnel"]
+    cols = st.columns(5)
+    for column, (label, key) in zip(cols, (
+        ("Clasificados", "classified"), ("Contactados", "contacted"),
+        ("Aceptados", "accepted"), ("Activados", "activated"), ("Rechazados", "rejected"),
+    )):
+        column.metric(label, f'{int(funnel.get(key, 0)):,}')
+    funnel_frame = pd.DataFrame({
+        "Etapa": ["Clasificados", "Mostrados", "Contactados", "Negociados", "Aceptados", "Activados"],
+        "Clientes": [funnel.get(key, 0) for key in ("classified", "displayed", "contacted", "negotiated", "accepted", "activated")],
+    }).set_index("Etapa")
+    st.bar_chart(funnel_frame, color="#79a99d", horizontal=True)
+
+    tab_mt, tab_channels, tab_objections, tab_economics, tab_evidence = st.tabs([
+        "Movistar Total", "Canales", "Objeciones", "Economía", "Evidencia técnica",
+    ])
+    with tab_mt:
+        mt = metrics["mt"]
+        one, two, three = st.columns(3)
+        one.metric("Recomendaciones MT", mt["recommendations"])
+        two.metric("Nuevos elegibles MT", mt["customers_converted_to_eligible"])
+        three.metric("NBO recalculadas", mt["recalculated_after_activation"])
+        if mt.get("tier_distribution"):
+            st.bar_chart(pd.Series(mt["tier_distribution"], name="Recomendaciones"), color="#79a99d")
+    with tab_channels:
+        channel_rows = []
+        for channel, values in metrics.get("channel_performance", {}).items():
+            contacted = values.get("contacted", 0)
+            channel_rows.append({
+                "Canal": channel, **values,
+                "Conversión contacto → aceptación": values.get("accepted", 0) / contacted if contacted else 0,
+            })
+        if channel_rows:
+            st.dataframe(pd.DataFrame(channel_rows), hide_index=True, width="stretch")
+        else:
+            st.caption("Aún no existe soporte operacional suficiente por canal.")
+    with tab_objections:
+        reasons = metrics.get("rejection_reasons", {})
+        if reasons:
+            st.bar_chart(pd.Series(reasons, name="Rechazos"), color="#c6a36a")
+        rebate = metrics.get("rebate", {})
+        if rebate:
+            st.caption(f"Rebate utilizado {rebate.get('used', 0)} veces; aceptado {rebate.get('accepted', 0)} veces.")
+    with tab_economics:
+        presets = {
+            "Conservador": {"margin_rate": .20, "expected_months": 6, "channel_costs": {"Digital": 1, "Tienda": 10, "Call In": 5, "Call Out": 8}, "rebate_cost": 12, "expected_rebate_use_rate": .30, "max_experience_penalty": 20},
+            "Base": {"margin_rate": .30, "expected_months": 12, "channel_costs": {"Digital": 1, "Tienda": 8, "Call In": 4, "Call Out": 6}, "rebate_cost": 10, "expected_rebate_use_rate": .25, "max_experience_penalty": 15},
+            "Optimista": {"margin_rate": .40, "expected_months": 18, "channel_costs": {"Digital": .5, "Tienda": 7, "Call In": 3, "Call Out": 5}, "rebate_cost": 8, "expected_rebate_use_rate": .20, "max_experience_penalty": 10},
+        }
+        scenario = st.selectbox("Escenario", list(presets), index=1)
+        client = st.selectbox("Cliente de referencia", ["CLI000013", "CLI000001", "CLI000018"])
+        volume = st.number_input("Volumen ilustrativo de clientes", min_value=1, max_value=100000, value=1000, step=100)
+        economics = api.economics(client, presets[scenario])
+        rows = [{
+            "Oferta": item["nombre_oferta"], "Canal": item["canal"],
+            "Ranking oficial": item["official_rank"], "Ranking económico": item["economic_rank"],
+            "Valor esperado": round(item["expected_value"], 2),
+        } for item in economics["economic_top3"]]
+        st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+        best_value = max((item["expected_value"] for item in economics["economic_top3"]), default=0)
+        st.metric("Valor esperado ilustrativo para el volumen", money(best_value * int(volume)))
+        with st.expander("Supuestos y sensibilidad"):
+            st.json(presets, expanded=False)
+        st.caption(economics["disclaimer"])
+    with tab_evidence:
+        evaluation_path = Path("reports/evaluation_v3.json")
+        if evaluation_path.exists():
+            report = __import__("json").loads(evaluation_path.read_text(encoding="utf-8"))
+            conditioned = report["ranking_conditioned"]
+            absolute = report["ranking_all_accepted_events"]
+            st.write("**Ranking offline v3**")
+            st.dataframe(pd.DataFrame([
+                {"Universo": "Evaluables", **conditioned},
+                {"Universo": "Todos los aceptados", **absolute},
+            ]), hide_index=True, width="stretch")
+            st.caption(
+                f"Cobertura evaluable: {report['coverage']['rate']:.1%} · mejora NDCG@3 frente al mejor baseline comparable: "
+                f"{report['relative_ndcg_improvement_vs_best_baseline']:.2%}. Intervalos bootstrap al 95% disponibles en el reporte versionado."
+            )
+        else:
+            st.info("Ejecuta `python -m nbo.evaluation_v3` para generar el reporte v3.", icon=None)
+        st.markdown(
+            "**Lectura honesta:** CatBoost no superó los gates de calibración. El sistema activó tasas jerárquicas y concentra la personalización en elegibilidad, ajuste, canal, ruta MT y closed loop."
+        )
+        audit_path = Path("artifacts/nbo_v2/audit.json")
+        if audit_path.exists():
+            audit = __import__("json").loads(audit_path.read_text(encoding="utf-8"))
+            fairness = audit.get("fairness_diagnostic", {})
+            if fairness:
+                st.write("**Diagnóstico responsable**")
+                st.json(fairness, expanded=False)
+                st.caption("Edad y ubicación se auditan descriptivamente, pero no se usan para excluir ofertas.")
+
+
 with st.sidebar:
     st.markdown(
         '<div class="brand"><span class="brand-mark">M</span>'
@@ -253,6 +446,22 @@ with st.sidebar:
         '<p class="brand-copy">Asistente de decisión para conversaciones relevantes, trazables y oportunas.</p></div>',
         unsafe_allow_html=True,
     )
+    public_demo = os.getenv("NBO_PUBLIC_DEMO", "false").lower() in {"1", "true", "yes"}
+    requested_view = str(st.query_params.get("view", "demo"))
+    view_options = ["Demo guiada", "Impacto y evidencia"]
+    if not public_demo:
+        view_options.insert(1, "Mesa del asesor")
+    view_map = {"demo": "Demo guiada", "advisor": "Mesa del asesor", "impact": "Impacto y evidencia"}
+    default_view = view_map.get(requested_view, "Demo guiada")
+    if default_view not in view_options:
+        default_view = "Demo guiada"
+    selected_view = st.radio(
+        "Vista", view_options, index=view_options.index(default_view),
+        help="La demo pública es aislada; la Mesa del asesor conserva persistencia solo en entornos controlados.",
+    )
+    selected_slug = {"Demo guiada": "demo", "Mesa del asesor": "advisor", "Impacto y evidencia": "impact"}[selected_view]
+    if requested_view != selected_slug:
+        st.query_params.update({"view": selected_slug})
     with st.expander("Conexión", expanded=False):
         connection_mode = st.radio(
             "Origen", ["Motor local", "API remota"], horizontal=True,
@@ -267,9 +476,9 @@ with st.sidebar:
         online = health.get("status") == "ok"
         source_label = "local" if connection_mode == "Motor local" else "remoto"
         status_text = f"Motor {source_label} activo · {health.get('model_version', 'NBO')}"
-        if connection_mode == "API remota" and health.get("api_version") != "1.4.0":
+        if connection_mode == "API remota" and health.get("api_version") != "1.5.0":
             online = False
-            status_text = "API incompatible · se requiere 1.4.0"
+            status_text = "API incompatible · se requiere 1.5.0"
     except Exception:
         online = False
         status_text = "Motor no disponible"
@@ -280,19 +489,28 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
     st.markdown("<br>", unsafe_allow_html=True)
-    st.caption("Casos de referencia")
-    for example_id, description in (
-        ("CLI000001", "Completar hogar"),
-        ("CLI000013", "Elegible MT"),
-        ("CLI000018", "Cliente MT"),
-    ):
-        if st.button(f"{example_id}  ·  {description}", key=f"example_{example_id}", width="stretch"):
-            try:
-                with st.spinner("Reconstruyendo contexto…"):
-                    refresh_context(api, example_id)
-            except AdvisorApiError as exc:
-                st.session_state.flash_error = str(exc)
-            st.rerun()
+    if selected_view == "Mesa del asesor":
+        st.caption("Casos de referencia")
+        for example_id, description in (
+            ("CLI000001", "Completar hogar"),
+            ("CLI000013", "Elegible MT"),
+            ("CLI000018", "Cliente MT"),
+        ):
+            if st.button(f"{example_id}  ·  {description}", key=f"example_{example_id}", width="stretch"):
+                try:
+                    with st.spinner("Reconstruyendo contexto…"):
+                        refresh_context(api, example_id)
+                except AdvisorApiError as exc:
+                    st.session_state.flash_error = str(exc)
+                st.rerun()
+
+
+if selected_view == "Demo guiada":
+    render_guided_demo(api)
+    st.stop()
+if selected_view == "Impacto y evidencia":
+    render_impact(api)
+    st.stop()
 
 
 st.markdown('<div class="eyebrow">Espacio del asesor</div>', unsafe_allow_html=True)
@@ -375,10 +593,22 @@ with main_col:
         f'<div class="offer-next"><strong>Siguiente paso:</strong> {safe(strategy["next_step"])}</div></div>',
         unsafe_allow_html=True,
     )
+    timing = top["momento"]
+    if timing.get("recommended_weekday") or timing.get("recommended_date"):
+        timing_text = " · ".join(filter(None, [
+            timing.get("recommended_weekday", "").capitalize(), timing.get("recommended_date"),
+        ]))
+        st.caption(
+            f"Próxima oportunidad: {timing_text} · base {timing.get('basis', 'operacional')} · "
+            f"soporte {timing.get('support', 0)} · confianza {timing.get('confidence', 'baja')}."
+        )
 
     metric_cols = st.columns(4)
     metric_cols[0].metric("Contacto", percentage(top["probabilidad_contacto"]), help="Probabilidad estimada de lograr contacto.")
-    metric_cols[1].metric("Aceptación", percentage(top["probabilidad_aceptacion"]), help="Condicionada a que exista contacto.")
+    metric_cols[1].metric(
+        "Propensión contextual", percentage(top["probabilidad_aceptacion"]),
+        help=f"Condicionada al contacto · soporte {confidence['level']} ({confidence['relevant_support']} observaciones relevantes).",
+    )
     metric_cols[2].metric("Venta estimada", percentage(top["probabilidad_venta"]), help="Contacto por aceptación; no es una garantía.")
     metric_cols[3].metric("Ajuste interno", f'{top["score"]:.2f}', help="Score de ranking; no debe comunicarse al cliente.")
 

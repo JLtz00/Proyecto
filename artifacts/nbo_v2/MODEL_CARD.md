@@ -34,3 +34,16 @@ Ranking explicable de ofertas elegibles y selección de canal para los datos sin
 - Mejora relativa NDCG@3 frente al mejor baseline: 7.2%.
 - Gate final: APROBADO.
 - Política temporal: solo meses completos anteriores al evento evaluado.
+
+## Evaluación complementaria v3
+
+Sin reentrenar ni modificar `nbo_v2`, se añadió una evaluación por evento aceptado:
+
+- 14,353 eventos aceptados; 11,897 evaluables (82.89%).
+- Evaluables: Hit@1 12.30%, Hit@3 36.56%, NDCG@3 0.2596.
+- Todos los aceptados: Hit@1 10.19%, Hit@3 30.30%, NDCG@3 0.2151.
+- IC bootstrap 95% NDCG@3 evaluable: [0.2514, 0.2670].
+- Mejora NDCG@3 frente al mejor baseline comparable: 17.46%.
+- 16 ofertas distintas en Top 1 y concentración máxima 26.15%.
+
+Los ablations confirman que la prioridad MT aporta cobertura estratégica al Top 3. El historial individual y el ajuste comercial no muestran mejora offline concluyente en el dataset sintético; se mantienen como información operacional y guardrail, no como evidencia causal. El reporte completo está en `reports/evaluation_v3.json`.
