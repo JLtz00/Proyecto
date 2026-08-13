@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -17,6 +18,12 @@ REQUIRED_ARTIFACTS = (
 )
 
 
+def canonical_text_sha256(path: Path) -> str:
+    """Hash textual estable entre checkouts CRLF (Windows) y LF (Linux)."""
+    content = path.read_bytes().replace(b"\r\n", b"\n")
+    return hashlib.sha256(content).hexdigest()
+
+
 def check_environment(config_path: str | None = None) -> dict:
     config = load_config(config_path)
     data_dir = Path(config["project"]["data_dir"])
@@ -26,6 +33,21 @@ def check_environment(config_path: str | None = None) -> dict:
         name: (data_dir / name).exists()
         for name in (CUSTOMER_FILE, CATALOG_FILE, HISTORY_FILE)
     }
+    expected_hashes: dict[str, str] = {}
+    checksum_path = data_dir / "SHA256SUMS"
+    if checksum_path.exists():
+        for line in checksum_path.read_text(encoding="utf-8").splitlines():
+            digest, filename = line.split(maxsplit=1)
+            expected_hashes[filename.strip()] = digest.lower()
+    data_hashes = {}
+    for name in (CUSTOMER_FILE, CATALOG_FILE, HISTORY_FILE):
+        path = data_dir / name
+        actual = canonical_text_sha256(path) if path.exists() else None
+        data_hashes[name] = {
+            "expected": expected_hashes.get(name), "actual": actual,
+            "matches": bool(actual and expected_hashes.get(name) == actual),
+            "mode": "text_lf_v1",
+        }
     manifest = None
     artifact_dir = None
     artifact_files: dict[str, bool] = {}
@@ -41,11 +63,13 @@ def check_environment(config_path: str | None = None) -> dict:
     report = {
         "python": sys.version.split()[0],
         "data": data_files,
+        "data_hashes": data_hashes,
         "manifest": str(manifest_path),
         "manifest_portable": bool(manifest and not Path(manifest["path"]).is_absolute()),
         "artifact_dir": str(artifact_dir) if artifact_dir else None,
         "artifacts": artifact_files,
-        "ready": all(data_files.values()) and bool(artifact_files) and all(artifact_files.values()),
+        "ready": all(data_files.values()) and all(item["matches"] for item in data_hashes.values())
+        and bool(artifact_files) and all(artifact_files.values()),
         "reference_cases": [],
     }
     if report["ready"]:

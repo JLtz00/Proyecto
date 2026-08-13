@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="390" viewBox="0 0 1200 390" role="img" aria-labelledby="title desc">
+  <title id="title">Arquitectura Closed-Loop NBO</title><desc id="desc">Datos, estado, decisión, experiencia y aprendizaje.</desc>
+  <rect width="1200" height="390" fill="#0b1015"/><style>.h{font:650 24px Inter,Segoe UI,sans-serif;fill:#edf1f4}.t{font:600 17px Inter,Segoe UI,sans-serif;fill:#edf1f4}.s{font:14px Inter,Segoe UI,sans-serif;fill:#93a0aa}.b{fill:#111820;stroke:#33423f;stroke-width:2}.a{fill:#172824;stroke:#527e74;stroke-width:2}.l{stroke:#527e74;stroke-width:3;fill:none;marker-end:url(#m)}</style><defs><marker id="m" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#527e74"/></marker></defs>
+  <text x="55" y="47" class="h">Arquitectura de decisión trazable y adaptativa</text>
+  <g transform="translate(55 95)"><rect width="210" height="110" rx="10" class="b"/><text x="22" y="32" class="t">Datos maestros</text><text x="22" y="60" class="s">100k clientes · 22 ofertas</text><text x="22" y="84" class="s">300k interacciones</text></g>
+  <path d="M265 150 H330" class="l"/><g transform="translate(330 95)"><rect width="230" height="110" rx="10" class="a"/><text x="22" y="32" class="t">Estado vigente</text><text x="22" y="60" class="s">Ledger append-only</text><text x="22" y="84" class="s">Feedback + productos</text></g>
+  <path d="M560 150 H625" class="l"/><g transform="translate(625 95)"><rect width="230" height="110" rx="10" class="a"/><text x="22" y="32" class="t">Motor de decisión</text><text x="22" y="60" class="s">Elegibilidad + ranking</text><text x="22" y="84" class="s">Canal + oportunidad + guion</text></g>
+  <path d="M855 150 H920" class="l"/><g transform="translate(920 95)"><rect width="225" height="110" rx="10" class="b"/><text x="22" y="32" class="t">Experiencia</text><text x="22" y="60" class="s">Mesa del asesor</text><text x="22" y="84" class="s">Demo + impacto</text></g>
+  <path d="M1030 205 V310 H445 V210" class="l"/><text x="615" y="292" class="s">contacto · aceptación · activación · rechazo · evidencia</text>
+</svg>

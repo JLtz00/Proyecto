@@ -37,13 +37,17 @@ def test_minimum_training_engine_persistence_and_endpoints(tmp_path, monkeypatch
         result.recommendation.probabilidad_venta,
         result.recommendation.score,
     ))
+    assert result.recommendation.momento.recommended_date
+    assert result.recommendation.momento.basis in {
+        "segment_channel_weekday_rate", "fallback_operational", "cooldown_operational",
+    }
 
     monkeypatch.setattr(api, "get_engine", lambda: engine)
     monkeypatch.setattr(api, "get_store", lambda: engine.store)
     client = TestClient(api.app)
     health = client.get("/health")
     assert health.status_code == 200
-    assert health.json()["api_version"] == "1.4.0"
+    assert health.json()["api_version"] == "1.5.0"
     assert health.json()["model_version"] == "integration_v1"
     recommendation = client.post("/api/v1/nbo/recommend", json={"cliente_id": "CLI000013"})
     assert recommendation.status_code == 200
@@ -63,7 +67,7 @@ def test_minimum_training_engine_persistence_and_endpoints(tmp_path, monkeypatch
     assert payload["sales_playbook"]["discovery_question"]
     assert payload["sales_playbook"]["suggested_script"]
     assert any("probabilidades" in item for item in payload["sales_playbook"]["do_not_say"])
-    assert payload["decision_schema_version"] == "decision_v3"
+    assert payload["decision_schema_version"] == "decision_v4"
     assert payload["decision_trace"]["total_offer_channel_pairs"] == 88
     assert payload["decision_trace"]["top_score_breakdown"]
     assert payload["evidence_confidence"]["contact_source"]
@@ -91,6 +95,9 @@ def test_minimum_training_engine_persistence_and_endpoints(tmp_path, monkeypatch
     assert rendered.json()["render_status"] == "fallback"
     assert client.post("/api/v1/nbo/recommend", json={"cliente_id": "missing"}).status_code == 404
     assert client.post("/api/v1/nbo/batch", json={"cliente_ids": ["CLI000013"], "limit": 1}).status_code == 200
+    executive = client.get("/api/v1/nbo/executive-report", params={"source": "demo"})
+    assert executive.status_code == 200
+    assert executive.json()["is_simulated"] is True
 
     feedback = client.post("/api/v1/nbo/feedback", json={
         "decision_id": payload["decision_id"], "resultado_final": "rechazada",

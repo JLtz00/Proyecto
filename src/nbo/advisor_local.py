@@ -5,6 +5,10 @@ from typing import Any
 from .advisor_ui import AdvisorApiError
 from .persistence import StateVersionConflict
 from .schemas import CustomerEventRequest
+from .jury import executive_report
+from .economics import simulate_economics
+from .schemas import DemoJourneyRequest, EconomicSimulationRequest
+from .simulation import demo_journey
 
 
 class LocalAdvisorApi:
@@ -32,11 +36,31 @@ class LocalAdvisorApi:
 
     def health(self) -> dict[str, Any]:
         return {
-            "status": "ok", "api_version": "local",
+            "status": "ok", "api_version": "1.5.0",
             "model_version": self.engine.versions["model_version"],
             "rules_version": self.engine.versions["rules_version"],
             "decision_schema_version": self.engine.config["project"]["decision_schema_version"],
         }
+
+    def metrics(self, source: str = "operational") -> dict[str, Any]:
+        if source not in {"operational", "demo"}:
+            raise AdvisorApiError("source debe ser operational o demo", 422)
+        return executive_report(self.store.business_metrics(), source)
+
+    def demo_journey(self, cliente_id: str = "CLI000001", motivo: str = "precio") -> dict[str, Any]:
+        try:
+            return self._json(demo_journey(
+                self.engine, DemoJourneyRequest(cliente_id=cliente_id, motivo_rechazo=motivo)
+            ))
+        except Exception as exc:
+            raise self._wrap_error(exc) from exc
+
+    def economics(self, cliente_id: str, assumptions: dict[str, Any]) -> dict[str, Any]:
+        try:
+            request = EconomicSimulationRequest(cliente_id=cliente_id, assumptions=assumptions)
+            return self._json(simulate_economics(self.engine, request))
+        except Exception as exc:
+            raise self._wrap_error(exc) from exc
 
     def recommend(self, cliente_id: str) -> dict[str, Any]:
         try:

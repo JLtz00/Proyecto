@@ -1,0 +1,196 @@
+{
+  "evaluation_version": "evaluation_v3",
+  "model_version": "nbo_v2",
+  "split": "test",
+  "unit": "accepted_offer_event",
+  "historical_cutoff_policy": "Solo meses completos anteriores al evento; se excluyen evento y mes actual.",
+  "coverage": {
+    "accepted_events": 14353,
+    "evaluable_events": 11897,
+    "non_evaluable_events": 2456,
+    "rate": 0.828885947188741
+  },
+  "ranking_conditioned": {
+    "hit_at_1": 0.1229721778599647,
+    "hit_at_3": 0.3655543414306128,
+    "ndcg_at_3": 0.25956059153268274
+  },
+  "ranking_all_accepted_events": {
+    "hit_at_1": 0.10192991012331917,
+    "hit_at_3": 0.3030028565456699,
+    "ndcg_at_3": 0.21514612676543762
+  },
+  "confidence_intervals_95": {
+    "hit_at_1": {
+      "low": 0.11674654231605408,
+      "high": 0.12950023548614226
+    },
+    "hit_at_3": {
+      "low": 0.35458662291617005,
+      "high": 0.37538021336514527
+    },
+    "ndcg_at_3": {
+      "low": 0.25143182352543236,
+      "high": 0.2670011798152445
+    }
+  },
+  "baselines": {
+    "global_popular": {
+      "conditioned": {
+        "hit_at_1": 0.10473228545011347,
+        "hit_at_3": 0.31142304782718333,
+        "ndcg_at_3": 0.22098685390765066
+      },
+      "all_accepted_events": {
+        "hit_at_1": 0.08681111962655891,
+        "hit_at_3": 0.25813418797463944,
+        "ndcg_at_3": 0.18317289771750295
+      }
+    },
+    "segment_popular": {
+      "conditioned": {
+        "hit_at_1": 0.10195847692695638,
+        "hit_at_3": 0.3108346642010591,
+        "ndcg_at_3": 0.21901962068979258
+      },
+      "all_accepted_events": {
+        "hit_at_1": 0.08451194872152164,
+        "hit_at_3": 0.2576464850553891,
+        "ndcg_at_3": 0.1815422857483775
+      }
+    },
+    "channel_popular": {
+      "conditioned": {
+        "hit_at_1": 0.10019332604858368,
+        "hit_at_3": 0.3046986635286207,
+        "ndcg_at_3": 0.21620258821251762
+      },
+      "all_accepted_events": {
+        "hit_at_1": 0.08304883996377065,
+        "hit_at_3": 0.25256044032606423,
+        "ndcg_at_3": 0.17920728711519002
+      }
+    }
+  },
+  "relative_ndcg_improvement_vs_best_baseline": 0.17455218237168016,
+  "ablations": {
+    "full": {
+      "hit_at_1": 0.1229721778599647,
+      "hit_at_3": 0.3655543414306128,
+      "ndcg_at_3": 0.25956059153268274
+    },
+    "without_mt_priority": {
+      "hit_at_1": 0.123728671093553,
+      "hit_at_3": 0.3165503908548373,
+      "ndcg_at_3": 0.23353295033171925
+    },
+    "without_customer_fit": {
+      "hit_at_1": 0.12406489030848113,
+      "hit_at_3": 0.3668992182903253,
+      "ndcg_at_3": 0.26127462355005815
+    },
+    "without_history": {
+      "hit_at_1": 0.1229721778599647,
+      "hit_at_3": 0.3655543414306128,
+      "ndcg_at_3": 0.25956059153268274
+    },
+    "without_friction": {
+      "hit_at_1": 0.123728671093553,
+      "hit_at_3": 0.36547028662688075,
+      "ndcg_at_3": 0.2599298265718282
+    },
+    "conversion_only": {
+      "hit_at_1": 0.050348827435487936,
+      "hit_at_3": 0.15356812641842482,
+      "ndcg_at_3": 0.10868269979256626
+    }
+  },
+  "slices": {
+    "target_channel": {
+      "Call In": {
+        "hit_at_1": 0.11011904761904762,
+        "hit_at_3": 0.3439625850340136,
+        "ndcg_at_3": 0.24140300868258335,
+        "events": 2352
+      },
+      "Call Out": {
+        "hit_at_1": 0.12349066959385291,
+        "hit_at_3": 0.36223929747530187,
+        "ndcg_at_3": 0.2579556796103217,
+        "events": 1822
+      },
+      "Digital": {
+        "hit_at_1": 0.12523900573613767,
+        "hit_at_3": 0.37834608030592737,
+        "ndcg_at_3": 0.2678771255582527,
+        "events": 4184
+      },
+      "Tienda": {
+        "hit_at_1": 0.12856739191862107,
+        "hit_at_3": 0.3664877083922012,
+        "ndcg_at_3": 0.26262202301699766,
+        "events": 3539
+      }
+    },
+    "mt_stage": {
+      "elegible_mt": {
+        "hit_at_1": 0.2962345884705098,
+        "hit_at_3": 0.8657114295234921,
+        "ndcg_at_3": 0.6173157230006746,
+        "events": 3001
+      },
+      "falta_internet_hogar": {
+        "hit_at_1": 0.06128430588862244,
+        "hit_at_3": 0.18838262723154808,
+        "ndcg_at_3": 0.13243876532869112,
+        "events": 3753
+      },
+      "falta_movil_postpago": {
+        "hit_at_1": 0.07373271889400922,
+        "hit_at_3": 0.22983870967741934,
+        "ndcg_at_3": 0.16189204319042358,
+        "events": 1736
+      },
+      "no_elegible_actual": {
+        "hit_at_1": 0.06345565749235474,
+        "hit_at_3": 0.18769113149847094,
+        "ndcg_at_3": 0.13308083449377625,
+        "events": 2616
+      },
+      "ya_es_mt": {
+        "hit_at_1": 0.0632111251580278,
+        "hit_at_3": 0.19469026548672566,
+        "ndcg_at_3": 0.13805453406628343,
+        "events": 791
+      }
+    },
+    "target_is_mt": {
+      "MT": {
+        "hit_at_1": 0.34139784946236557,
+        "hit_at_3": 0.9973118279569892,
+        "ndcg_at_3": 0.7112382813844179,
+        "events": 2604
+      },
+      "No MT": {
+        "hit_at_1": 0.06176692133864199,
+        "hit_at_3": 0.18852900032282363,
+        "ndcg_at_3": 0.13299557438279372,
+        "events": 9293
+      }
+    }
+  },
+  "diversity": {
+    "top1_unique_offers": 16,
+    "max_offer_share": 0.26149449441035555
+  },
+  "limitations": [
+    "La evaluación observa decisiones de la política histórica y no estima uplift causal.",
+    "El perfil maestro resume seis meses y no es un snapshot mensual perfecto.",
+    "La comparación contra baselines comparte unidad de evento, elegibilidad y política temporal."
+  ],
+  "parameters": {
+    "seed": 42,
+    "bootstrap_iterations": 1000,
+    "max_events": null
+  }
+}

@@ -105,6 +105,17 @@ class ModelArtifact:
     def local_contributions(self, frame: pd.DataFrame) -> list[dict[str, float]]:
         if self.model_kind != "catboost":
             return [{} for _ in range(len(frame))]
+        try:
+            from catboost import Pool
+
+            prepared = self.preprocessor.transform(frame)
+            pool = Pool(prepared, cat_features=self.preprocessor.categorical)
+            values = np.asarray(self.estimator.get_feature_importance(pool, type="ShapValues"))
+            if values.ndim == 3:
+                values = values[:, 0, :]
+            return [dict(zip(self.preprocessor.columns, row[:-1].astype(float))) for row in values]
+        except Exception:
+            return [{} for _ in range(len(frame))]
 
 
 @dataclass
@@ -144,17 +155,6 @@ class MulticlassPriorArtifact:
 
     def local_contributions(self, frame: pd.DataFrame) -> list[dict[str, float]]:
         return [{} for _ in range(len(frame))]
-        try:
-            from catboost import Pool
-
-            prepared = self.preprocessor.transform(frame)
-            pool = Pool(prepared, cat_features=self.preprocessor.categorical)
-            values = np.asarray(self.estimator.get_feature_importance(pool, type="ShapValues"))
-            if values.ndim == 3:  # multiclass
-                values = values[:, 0, :]
-            return [dict(zip(self.preprocessor.columns, row[:-1].astype(float))) for row in values]
-        except Exception:
-            return [{} for _ in range(len(frame))]
 
 
 def binary_metrics(target: np.ndarray, probability: np.ndarray) -> dict[str, Any]:

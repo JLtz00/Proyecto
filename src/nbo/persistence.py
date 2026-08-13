@@ -432,7 +432,10 @@ class DecisionStore:
         if as_of is not None:
             query += " AND effective_at<=?"
             params.append(as_of)
-        query += " ORDER BY effective_at, recorded_at, event_id"
+        # effective_at define la secuencia comercial. Si dos hechos comparten exactamente
+        # el mismo timestamp (frecuente en Windows y en cargas batch), la versión del
+        # ledger conserva el orden de registro; un UUID aleatorio nunca debe decidir estado.
+        query += " ORDER BY effective_at, recorded_at, state_version_after, event_id"
         with self.connect() as connection:
             rows = connection.execute(query, params).fetchall()
         return [self._decode_state_event(row) for row in rows]
@@ -644,6 +647,32 @@ class DecisionStore:
             rejected_events = connection.execute(
                 "SELECT reason, COUNT(*) n FROM customer_event_rejections GROUP BY reason"
             ).fetchall()
+            channel_rows = connection.execute(
+                """SELECT d.top_channel channel,
+                COUNT(DISTINCT CASE WHEN e.event_type='contacted' THEN d.decision_id END) contacted,
+                COUNT(DISTINCT CASE WHEN f.final_result='aceptada' THEN d.decision_id END) accepted,
+                COUNT(DISTINCT CASE WHEN s.event_type='product_activated' THEN d.decision_id END) activated
+                FROM nbo_decisions d
+                LEFT JOIN funnel_events e ON e.decision_id=d.decision_id
+                LEFT JOIN feedback_events f ON f.decision_id=d.decision_id
+                LEFT JOIN customer_state_events s ON s.decision_id=d.decision_id
+                GROUP BY d.top_channel"""
+            ).fetchall()
+            rejection_rows = connection.execute(
+                "SELECT rejection_reason reason, COUNT(*) n FROM feedback_events WHERE rejection_reason IS NOT NULL GROUP BY rejection_reason"
+            ).fetchall()
+            evidence_rows = connection.execute(
+                "SELECT proof_type evidence, COUNT(*) n FROM funnel_events WHERE proof_type IS NOT NULL GROUP BY proof_type"
+            ).fetchall()
+            rebate_row = connection.execute(
+                """SELECT SUM(CASE WHEN rebate_used=1 THEN 1 ELSE 0 END) used,
+                SUM(CASE WHEN rebate_result='aceptada' THEN 1 ELSE 0 END) accepted
+                FROM feedback_events"""
+            ).fetchone()
+            mt_tiers = connection.execute(
+                """SELECT CASE top_offer_id WHEN 'OF020' THEN 'Básico' WHEN 'OF021' THEN 'Plus' WHEN 'OF022' THEN 'Max' END tier,
+                COUNT(*) n FROM nbo_decisions WHERE top_offer_id IN ('OF020','OF021','OF022') GROUP BY top_offer_id"""
+            ).fetchall()
         delay_seconds = []
         for row in activation_delays:
             activated = datetime.fromisoformat(row["activated_at"].replace("Z", "+00:00"))
@@ -696,6 +725,13 @@ class DecisionStore:
                 if mt_recommendation_delays else None
             ),
             "rejected_customer_events": {row["reason"]: row["n"] for row in rejected_events},
+            "channel_performance": {row["channel"]: {
+                "contacted": row["contacted"], "accepted": row["accepted"], "activated": row["activated"],
+            } for row in channel_rows},
+            "rejection_reasons": {row["reason"]: row["n"] for row in rejection_rows},
+            "evidence": {row["evidence"]: row["n"] for row in evidence_rows},
+            "rebate": {"used": int(rebate_row["used"] or 0), "accepted": int(rebate_row["accepted"] or 0)},
+            "mt_tier_distribution": {row["tier"]: row["n"] for row in mt_tiers},
             "playbook_experiment": {
                 "interpretation": "descriptive_only",
                 "variants": [dict(row) for row in experiments],

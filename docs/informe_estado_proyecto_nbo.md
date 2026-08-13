@@ -2,7 +2,7 @@
 
 **Fecha de corte:** 13 de agosto de 2026  
 **Versión activa:** `nbo_v2`  
-**Versiones asociadas:** `features_v2`, `rules_v4`, `playbook_v2`, `decision_v3`, `catalog_2026_08`  
+**Versiones asociadas:** `features_v2`, `rules_v5`, `playbook_v2`, `decision_v4`, `catalog_2026_08`
 **Estado general:** motor closed-loop funcional, entrenado con todos los datos, evaluado sin fuga temporal y preparado para la entrega técnica, la demostración adaptativa y el procesamiento masivo. Todavía no debe considerarse un sistema productivo validado en campo.
 
 ## Actualización closed-loop
@@ -11,7 +11,7 @@
 - Reconstrucción de estado actual o a fecha de corte sin modificar los tres CSV maestros.
 - Aceptación separada de activación; la activación validada recalcula y persiste inmediatamente la nueva NBO.
 - Ofertas activas bloqueadas, derivación/override MT y adaptación de tasas, fatiga y cooldown desde feedback operacional deduplicado.
-- API `1.4.0`, `rules_v4` y `decision_v3`; `nbo_v2` permanece como champion sin reentrenamiento.
+- API `1.5.0`, `rules_v5` y `decision_v4`; `nbo_v2` permanece como champion sin reentrenamiento.
 - Readiness conservador para challenger, sin entrenamiento ni promoción automáticos.
 - Demo reproducible `CLI000001`: `OF005` → aceptación → activación → elegible MT → `OF022` → rechazo por precio → tier MT inferior.
 
@@ -120,6 +120,23 @@ Resultados adicionales:
 - Ofertas diferentes presentes como Top 1: 16.
 - Concentración máxima de una oferta en test: 27.2%.
 
+### Evaluación v3 por evento
+
+La auditoría competitiva añadió una evaluación por cada evento aceptado, intervalos bootstrap agrupados por cliente y métricas absolutas que cuentan los casos no evaluables como fallo:
+
+| Métrica | Evaluables | Todos los aceptados |
+|---|---:|---:|
+| Hit@1 | 12.30% | 10.19% |
+| Hit@3 | 36.56% | 30.30% |
+| NDCG@3 | 0.2596 | 0.2151 |
+
+- 14,353 aceptaciones en test; 11,897 evaluables (`82.89%`).
+- IC 95% NDCG@3 condicionado: `[0.2514, 0.2670]`.
+- Mejora relativa NDCG@3 frente al mejor baseline con la misma unidad: `17.46%`.
+- 16 ofertas distintas como Top 1; concentración máxima `26.15%`.
+- Los ablations muestran que la prioridad MT sostiene Hit@3, mientras que el historial predictivo individual aporta poca separación en este dataset sintético.
+- La comparación y sus limitaciones están versionadas en `reports/evaluation_v3.json`.
+
 ## 6. Resultados Movistar Total
 
 - Captura de clientes elegibles MT: 100%.
@@ -169,7 +186,7 @@ Los eventos pueden almacenar canal, oferta, medio probatorio y referencia opcion
 
 ## 9. Calidad y pruebas
 
-Al corte de este informe, la suite vigente contiene **31 pruebas automatizadas**, todas aprobadas. Cubre:
+La suite vigente contiene **50 pruebas automatizadas**, incluidas validaciones de demo, aislamiento público, evaluación v3, métricas ejecutivas, explicabilidad CatBoost y checksums portables entre Windows/Linux. Cubre:
 
 - Contrato y calidad de datos.
 - Nulos semánticos y sentinel de datos ilimitados.
@@ -232,7 +249,8 @@ Para demostrar potencial, el motor permite comparar escenarios sin modificar el 
 | Pruebas, model card y reportes | Completo |
 | Frontend y dashboard final | Completo para uso local del asesor |
 | Piloto con feedback real | Pendiente |
-| Despliegue y controles de producción | Pendiente |
+| Streamlit Community Cloud | Configurado; activación de URL pendiente de autorización del propietario |
+| Controles corporativos de producción | Pendiente |
 
 La demo del motor ya puede reproducirse con `CLI000013` (elegible MT), `CLI000001` (ruta hacia MT) y `CLI000018` (ya posee MT).
 

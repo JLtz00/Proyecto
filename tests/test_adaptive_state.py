@@ -92,8 +92,8 @@ def test_acceptance_does_not_change_state_and_decision_activation_requires_it(tm
         "precio_mensual": 20, "momento": {}, "explanation": {}, "reason_codes": [],
     }
     store.save_decision({
-        "decision_id": "d1", "decision_schema_version": "decision_v3",
-        "versions": {"model_version": "nbo_v2", "feature_version": "f", "rules_version": "rules_v4", "catalog_version": "c"},
+        "decision_id": "d1", "decision_schema_version": "decision_v4",
+        "versions": {"model_version": "nbo_v2", "feature_version": "f", "rules_version": "rules_v5", "catalog_version": "c"},
         "cliente": {"cliente_id": "CLI_TEST", "etapa_mt": "elegible_mt"},
         "recommendation": item, "alternatives": [], "rejection_prediction": [],
         "rebate": {"strategy": "none"},
@@ -111,16 +111,18 @@ def test_acceptance_does_not_change_state_and_decision_activation_requires_it(tm
 
 def test_override_can_be_replaced_and_compensated(tmp_path, customer, catalog):
     service, _ = _service(tmp_path, customer, catalog)
+    same_effective_at = datetime.now(timezone.utc)
     first, _, blocked, _, _ = service.register_event(_event(
         event_type="mt_eligibility_overridden", oferta_id=None, source="crm",
         idempotency_key="override-1", changes={"enabled": False},
-        evidence_type="ticket", evidence_reference="T-1",
+        evidence_type="ticket", evidence_reference="T-1", effective_at=same_effective_at,
     ))
     assert blocked.attributes["elegible_mt"] is False
     _, _, enabled, _, _ = service.register_event(_event(
         event_type="mt_eligibility_overridden", oferta_id=None, source="crm",
         idempotency_key="override-2", expected_state_version=1,
         changes={"enabled": True}, evidence_type="ticket", evidence_reference="T-2",
+        effective_at=same_effective_at,
     ))
     assert enabled.attributes["elegible_mt"] is True
     _, _, restored, _, _ = service.register_event(_event(

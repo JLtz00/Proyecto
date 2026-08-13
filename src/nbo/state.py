@@ -251,9 +251,11 @@ class CustomerStateService:
             self.store.get_customer_event(request.correction_of_event_id)
 
         effective = _utc(request.effective_at)
-        before_effective = self.get_state(
-            request.cliente_id, pd.Timestamp(effective) - pd.Timedelta(microseconds=1),
-        )
+        # El nuevo evento se registra después de los ya existentes que tengan el
+        # mismo effective_at. Usar un microsegundo anterior los omitía y hacía que
+        # una cancelación inmediata no viera la activación previa en sistemas con
+        # reloj de baja resolución.
+        before_effective = self.get_state(request.cliente_id, effective)
         previous_current = self.get_state(request.cliente_id)
         patch = self._event_patch(request, before_effective)
         projected_attrs = dict(before_effective.attributes)
