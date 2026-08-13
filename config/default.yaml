@@ -1,0 +1,101 @@
+project:
+  seed: 42
+  data_dir: dataset
+  artifact_dir: artifacts
+  database_path: artifacts/nbo.sqlite3
+  feature_version: features_v2
+  rules_version: rules_v4
+  catalog_version: catalog_2026_08
+  playbook_version: playbook_v2
+  decision_schema_version: decision_v3
+  experiment_version: playbook_ab_v1
+  model_version: nbo_v2
+
+validation:
+  expected_customers: 100000
+  expected_offers: 22
+  expected_history: 300112
+
+features:
+  smoothing_alpha: 10.0
+  as_of_date: "2026-08-13"
+  friction_weights:
+    mora: 0.20
+    delinquency: 0.20
+    complaints: 0.20
+    fatigue: 0.40
+
+rules:
+  rejection_block_days: 14
+  rejection_penalty_days: 30
+  cooldown_penalty: 0.12
+  fatigue_threshold: 3
+  post_rejection_wait_days:
+    precio: 15
+    no_necesita: 30
+    ya_tiene_similar: 30
+    mal_momento: 15
+    no_confia: 15
+    otro: 30
+
+scoring:
+  w_conversion: 0.50
+  w_fit: 0.20
+  w_business: 0.10
+  w_mt: 0.10
+  w_friction: 0.10
+
+training:
+  train_fraction: 0.70
+  validation_fraction: 0.15
+  test_fraction: 0.15
+  catboost_iterations: 160
+  catboost_depth: 7
+  catboost_learning_rate: 0.08
+  thread_count: -1
+  search_trials: 20
+  search_sample_size: 60000
+  finalists: 3
+  smoothing_alphas: [5.0, 10.0, 20.0, 50.0]
+  champion_gate:
+    relative_loss_improvement: 0.01
+    auc_improvement: 0.01
+    temporal_max_degradation: 0.02
+    rejection_macro_f1_improvement: 0.02
+  calibration:
+    max_tie_rate: 0.10
+
+ranking:
+  ndcg_relative_improvement: 0.03
+  weight_trials: 80
+  min_top1_offers: 6
+  max_top1_offer_share: 0.50
+
+confidence:
+  medium_min_support: 5
+  high_min_channel_contacts: 20
+  high_min_offer_exposures: 5
+
+experiments:
+  playbook_seed: 42
+  enabled: true
+
+llm:
+  enabled: false
+  provider: openai_compatible
+  base_url: "https://api.openai.com/v1"
+  model: "gpt-4.1-mini"
+  api_key_env: "NBO_LLM_API_KEY"
+  timeout_seconds: 8
+  prompt_version: "sales_renderer_v1"
+  max_output_characters: 1200
+
+operational_state:
+  external_activation_sources: [billing, crm, provisioning, order_management, backoffice, demo, advisor_dashboard]
+
+learning:
+  readiness_thresholds:
+    feedback: 500
+    customers: 250
+    channels: 3
+    offers: 10
