@@ -13,6 +13,13 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .ipynb_checkpoints/
+artifacts/*
+!artifacts/current.json
+!artifacts/nbo_v2/
+!artifacts/nbo_v2/**
+*.egg-info/
+.coverage
+htmlcov/
 
 # Variables y secretos locales
 .env
