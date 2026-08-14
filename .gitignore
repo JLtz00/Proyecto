@@ -28,3 +28,6 @@ htmlcov/
 
 .claude/
 Pr\303\241ctica Data Wrangling.pdf"
+
+# Screenshots temporales generados durante verificación (usar assets/screenshots/ para las permanentes)
+reports/screenshots_run/

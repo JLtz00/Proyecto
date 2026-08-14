@@ -75,6 +75,10 @@ def check_environment(config_path: str | None = None) -> dict:
     if report["ready"]:
         engine = NBOEngine(config_path, persist=False)
         report["versions"] = engine.versions
+        report["enrichment"] = {
+            "churn_available": engine.enrichment.churn is not None,
+            "personas_available": engine.enrichment.personas is not None,
+        }
         for cliente_id in REFERENCE_CLIENTS:
             result = engine.recommend_override(engine.customer_index.loc[cliente_id])
             report["reference_cases"].append({
@@ -82,6 +86,9 @@ def check_environment(config_path: str | None = None) -> dict:
                 "stage": result.cliente.etapa_mt,
                 "offer_id": result.recommendation.oferta_id,
                 "channel": result.recommendation.canal,
+                "persona": result.cliente.persona.nombre,
+                "riesgo_fuga": result.cliente.riesgo_fuga.nivel,
+                "uplift_mt": result.cliente.uplift_mt,
             })
     return report
 

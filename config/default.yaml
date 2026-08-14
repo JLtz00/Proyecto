@@ -44,6 +44,7 @@ scoring:
   w_business: 0.10
   w_mt: 0.10
   w_friction: 0.10
+  w_churn: 0.05
 
 training:
   train_fraction: 0.70

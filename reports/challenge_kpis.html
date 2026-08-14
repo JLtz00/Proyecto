@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>KPIs Desafío 2 · Motor NBO</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; background: #0f172a; color: #f1f5f9; margin: 0; padding: 32px; }
+  h1 { margin: 0 0 4px 0; font-size: 28px; }
+  .sub { color: #94a3b8; margin-bottom: 24px; font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+  .card { background: #1e293b; border-radius: 12px; padding: 20px; }
+  .card h2 { font-size: 12px; text-transform: uppercase; color: #94a3b8; margin: 0 0 12px 0; letter-spacing: .05em; }
+  .value { font-size: 28px; font-weight: 600; margin-bottom: 6px; }
+  .meta-label { color: #94a3b8; font-size: 12px; }
+  .bar { height: 10px; background: #334155; border-radius: 5px; margin: 8px 0; position: relative; overflow: visible; }
+  .fill { height: 100%; border-radius: 5px; }
+  .meta { position: absolute; top: -4px; width: 2px; height: 18px; background: #ef4444; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 8px; text-align: left; border-bottom: 1px solid #334155; font-size: 14px; }
+  th { color: #94a3b8; font-weight: 500; text-transform: uppercase; font-size: 11px; letter-spacing: .05em; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .disclaimer { margin-top: 24px; padding: 16px; background: #422006; border-left: 4px solid #f59e0b; border-radius: 8px; color: #fef3c7; font-size: 13px; line-height: 1.5; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+</style>
+</head>
+<body>
+<h1>KPIs Desafío 2 · Motor NBO</h1>
+<div class="sub">Muestra 100 clientes · corte 2026-08-13 · generado 2026-08-14T07:49:35.816021+00:00</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>MT share hogar</h2>
+    <div class="value">35.3%</div>
+    <div class="bar"><div class="fill" style="width:35.3%;background:#f59e0b"></div><div class="meta" style="left:50.0%" title="Meta: 50%"></div></div>
+    <div class="meta-label">18/51 recomendaciones de hogar son MT · meta &gt;50%</div>
+  </div>
+  <div class="card">
+    <h2>MT share móvil</h2>
+    <div class="value">30.0%</div>
+    <div class="bar"><div class="fill" style="width:30.0%;background:#10b981"></div><div class="meta" style="left:10.0%" title="Meta: 10%"></div></div>
+    <div class="meta-label">18/60 recomendaciones de móvil son MT · meta &gt;10%</div>
+  </div>
+  <div class="card">
+    <h2>ΔARPU esperado (12m)</h2>
+    <div class="value">S/ 144.34</div>
+    <div class="meta-label">ARPU base S/ 81.20/mes · margen 30% · 12 meses</div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>Ofertas repetidas evitadas</h2>
+    <div class="value">576</div>
+    <div class="meta-label">5.76 por cliente en promedio · el motor filtró estas antes del ranking</div>
+  </div>
+  <div class="card">
+    <h2>Uplift MT promedio</h2>
+    <div class="value">35.6%</div>
+    <div class="meta-label">Δ P(venta) MT vs mediana de alternativas · 18 clientes con uplift ≥ 5%</div>
+  </div>
+  <div class="card">
+    <h2>Riesgo de fuga (proxy)</h2>
+    <div class="value">17.7%</div>
+    <div class="meta-label">Probabilidad promedio · 16.0% en nivel alto</div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="card">
+    <h2>Distribución de personas (K-Means k=5)</h2>
+    <table><thead><tr><th>Persona</th><th class="num">Clientes</th></tr></thead>
+    <tbody><tr><td>Leal precio-sensible</td><td class="num">47</td></tr><tr><td>Nuevo en cartera</td><td class="num">17</td></tr><tr><td>Elegible MT estándar</td><td class="num">16</td></tr><tr><td>Cliente MT actual</td><td class="num">12</td></tr><tr><td>Perfil de riesgo</td><td class="num">8</td></tr></tbody></table>
+  </div>
+  <div class="card">
+    <h2>Distribución riesgo de fuga</h2>
+    <table><thead><tr><th>Nivel</th><th class="num">Clientes</th></tr></thead>
+    <tbody><tr><td>alto</td><td class="num">16</td></tr><tr><td>bajo</td><td class="num">82</td></tr><tr><td>medio</td><td class="num">2</td></tr></tbody></table>
+  </div>
+</div>
+
+<div class="disclaimer">
+  KPIs prospectivos derivados de recomendaciones simuladas sobre la muestra. No son ventas reales, uplift causal ni churn observado.
+</div>
+</body>
+</html>

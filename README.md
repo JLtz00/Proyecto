@@ -42,7 +42,12 @@ El repositorio incluye:
 - Código completo de validación, features, entrenamiento, evaluación e inferencia.
 - `nbo_v2` preentrenado para probar el sistema inmediatamente.
 - API FastAPI `1.5.0`.
-- Mesa comercial Streamlit para el asesor.
+- Mesa comercial Streamlit para el asesor (con **Vista simple** para operación bajo presión).
+- **Modelo de churn proxy** que penaliza recomendaciones a clientes en riesgo de fuga.
+- **Segmentación K-Means** de 5 personas nombradas visibles en la Mesa.
+- **Uplift estimado de MT** vs alternativas, con referencia poblacional del histórico.
+- **Simulador what-if** de los pesos del ranking, sin re-entrenar ni persistir.
+- **KPIs del Desafío 2** (MT share hogar/móvil, ΔARPU, ofertas repetidas evitadas) en la vista de Impacto y como reporte HTML autocontenido en `reports/challenge_kpis.html`.
 - Persistencia SQLite para decisiones, feedback y eventos.
 - Pruebas automatizadas y casos de demostración reproducibles.
 
@@ -155,7 +160,7 @@ Los archivos maestros nunca se modifican durante inferencia, feedback o activaci
 
 `dataset/SHA256SUMS` protege el contenido de los tres maestros. El bootstrap usa el modo canónico `text_lf_v1`: normaliza exclusivamente finales de línea `CRLF/LF` antes de calcular SHA-256, por lo que un checkout en Windows y otro en Linux producen el mismo hash sin ocultar cambios de datos.
 
-Los CSV `*_limpio.csv` de la raíz pertenecen al trabajo exploratorio y no se usan para entrenar el motor, ya que sus agregados globales podrían introducir fuga de información.
+Los CSV `*_limpio.csv` viven en `notebooks/eda/` porque son artefactos exploratorios y no se usan para entrenar el motor: sus agregados globales podrían introducir fuga de información.
 
 ## 4. Artefactos preentrenados
 
@@ -168,12 +173,21 @@ artifacts/
     ├── contact.joblib
     ├── acceptance.joblib
     ├── rejection.joblib
+    ├── churn.joblib                (enriquecimiento: riesgo de fuga proxy)
+    ├── personas.joblib             (enriquecimiento: K-Means 5 personas)
+    ├── enrichment_metadata.json
     ├── metadata.json
     ├── feature_schema.json
     ├── split_manifest.json
     ├── ranking_weights.json
     ├── audit.json
     └── MODEL_CARD.md
+```
+
+Para regenerar únicamente los modelos de enriquecimiento tras un cambio en los datos:
+
+```powershell
+python scripts\train_enrichment.py
 ```
 
 El conjunto completo pesa aproximadamente 2.56 MB, por lo que se distribuye directamente con el repositorio y no requiere Git LFS.
@@ -221,11 +235,12 @@ Iniciar con:
 streamlit run streamlit_app.py
 ```
 
-La aplicación contiene tres vistas con responsabilidades separadas:
+La aplicación contiene cuatro vistas con responsabilidades separadas:
 
 - **Demo guiada:** recorrido aislado y reiniciable para explicar el closed loop en 90 segundos.
-- **Mesa del asesor:** consulta y operación persistente en entornos locales o controlados.
-- **Impacto y evidencia:** funnel, MT, canales, objeciones, economía y evaluación offline.
+- **Mesa del asesor:** consulta y operación persistente en entornos locales o controlados. Incluye toggle **Vista simple** en la barra lateral para reducirla a oferta, canal, un porqué, un speech, la objeción probable y botones grandes de resultado.
+- **Impacto y evidencia:** funnel, MT, canales, objeciones, economía, evaluación offline y **cuadro ejecutivo con los KPIs del Desafío 2** (MT share, ΔARPU, uplift, ofertas repetidas, distribución de personas y riesgo de fuga).
+- **Simulador what-if:** sliders sobre los pesos del ranking (conversión, ajuste, valor, MT, fricción, churn) para ver el impacto en la NBO sin modificar el modelo ni persistir nada.
 
 Incluye:
 
@@ -356,6 +371,40 @@ Eventos admitidos:
 Los eventos nunca se editan ni eliminan. Una corrección se registra como un evento compensatorio. Cada evento conserva fuente, evidencia, valores anteriores y nuevos, fecha efectiva, fecha de registro, idempotency key y versiones de estado.
 
 La adaptación inmediata actualiza tasas jerárquicas, afinidad por canal, exposición, rechazo, fatiga y cooldown. No modifica los pesos ni reentrena `nbo_v2`. El reentrenamiento continúa siendo una operación explícita.
+
+## 8b. Modelos de enriquecimiento
+
+Además del ranking principal, el motor entrega tres señales de enriquecimiento por cliente que **no** modifican el modelo champion pero sí penalizan el score cuando corresponde y aparecen en la Mesa del asesor:
+
+| Señal | Modelo | Salida | Uso |
+|---|---|---|---|
+| **Riesgo de fuga** | Regresión logística sobre un proxy operacional (mora, delincuencia, reclamos, caída de facturación, ausencia de servicios) | `bajo` / `medio` / `alto` + `probabilidad` | Penaliza el score con `w_churn` para desincentivar ofertas a clientes en riesgo. Se declara explícitamente como **proxy**, no churn observado. |
+| **Persona** | K-Means (k=5) sobre features de antigüedad, facturación, consumo, uso de app, reclamos, mora, elegibilidad MT y estado MT | Nombre de persona con descripción comercial | Contexto para el asesor: Elegible MT estándar, Cliente MT actual, Nuevo en cartera, Leal precio-sensible, Perfil de riesgo. |
+| **Uplift MT** | Δ P(venta) del modelo entre la mejor oferta MT y la mediana de alternativas, combinado con el uplift poblacional del histórico (MT ≈ 69.7% vs resto ≈ 34.1% de aceptación por contacto) | Porcentaje | Argumento cuantitativo para priorizar MT en clientes elegibles. Es observacional, **no causal**. |
+
+Los tres se entrenan con `python scripts\train_enrichment.py` y se guardan en `artifacts/nbo_v2/` junto al metadata correspondiente. Si los artefactos no existen, el motor degrada silenciosamente y los campos quedan como `disponible=false`.
+
+## 8c. KPIs del Desafío 2
+
+Un batch determinista sobre una muestra de clientes produce los indicadores que la rúbrica del desafío pide:
+
+```powershell
+python -m nbo.challenge_metrics --sample-size 1000
+```
+
+Genera `reports/challenge_kpis.json` y `reports/challenge_kpis.html` (autocontenido) con:
+
+- **MT share hogar / móvil** con marcadores de meta (>50% / >10%).
+- **ΔARPU anual esperado** con supuestos explícitos de margen y horizonte.
+- **Ofertas repetidas evitadas** por las reglas de elegibilidad.
+- **Uplift promedio de MT** y clientes con uplift alto.
+- **Distribución de personas** y **distribución de riesgo de fuga**.
+
+Los mismos KPIs aparecen en vivo dentro de la vista **Impacto y evidencia** del dashboard.
+
+## 8d. Simulador what-if de política
+
+En la vista **Simulador what-if** el asesor puede mover sliders sobre los pesos del ranking (`w_conversion`, `w_fit`, `w_business`, `w_mt`, `w_friction`, `w_churn`) y ver inmediatamente cómo cambia la NBO para un cliente puntual. La comparación side-by-side ayuda a explicar decisiones de gobernanza del modelo y a explorar cómo respondería el motor bajo otra política sin re-entrenar ni persistir nada.
 
 ## 9. Reglas comerciales principales
 

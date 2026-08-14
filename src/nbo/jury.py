@@ -46,6 +46,33 @@ def demo_business_metrics() -> dict[str, Any]:
             "to_mt_eligibility": 97200.0,
             "to_mt_recommendation": 0.24,
         },
+        "challenge_kpis": {
+            "mt_share_hogar": 0.53,
+            "mt_share_movil": 0.11,
+            "delta_arpu_esperado_pen": 12.40,
+            "arpu_base_pen": 81.20,
+            "arpu_esperado_pen": 93.60,
+            "ofertas_repetidas_evitadas": 42,
+            "clientes_elegibles_mt": 84,
+            "meta_mt_hogar": 0.50,
+            "meta_mt_movil": 0.10,
+        },
+        "personas": {
+            "Elegible MT alto valor": 61,
+            "Elegible MT estándar": 128,
+            "Cliente MT actual": 247,
+            "Nuevo en cartera": 189,
+            "Leal precio-sensible": 322,
+            "Perfil de riesgo": 53,
+        },
+        "churn": {
+            "distribution": {"alto": 74, "medio": 156, "bajo": 770},
+            "avg_probability": 0.16,
+        },
+        "uplift_mt": {
+            "avg_uplift": 0.089,
+            "clientes_con_uplift_alto": 173,
+        },
         "disclaimer": "Escenario demostrativo determinista; no representa resultados comerciales reales.",
     }
 

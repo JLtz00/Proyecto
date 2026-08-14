@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from .advisor_ui import AdvisorApiError
+from .challenge_metrics import compute_challenge_metrics
 from .persistence import StateVersionConflict
 from .schemas import CustomerEventRequest
 from .jury import executive_report
@@ -65,6 +66,32 @@ class LocalAdvisorApi:
     def recommend(self, cliente_id: str) -> dict[str, Any]:
         try:
             return self._json(self.engine.recommend(cliente_id))
+        except Exception as exc:
+            raise self._wrap_error(exc) from exc
+
+    def challenge_kpis(self, sample_size: int = 500, seed: int = 42) -> dict[str, Any]:
+        try:
+            return compute_challenge_metrics(self.engine, sample_size=sample_size, seed=seed)
+        except Exception as exc:
+            raise self._wrap_error(exc) from exc
+
+    def what_if(self, cliente_id: str, scoring_overrides: dict[str, float]) -> dict[str, Any]:
+        try:
+            customer = self.engine.customer_index.loc[cliente_id]
+            base = self.engine.recommend_override(customer)
+            saved_scoring = dict(self.engine.scoring)
+            override = {**saved_scoring, **{k: float(v) for k, v in scoring_overrides.items()}}
+            self.engine.scoring = override
+            try:
+                simulated = self.engine.recommend_override(customer)
+            finally:
+                self.engine.scoring = saved_scoring
+            return {
+                "base": self._json(base),
+                "simulated": self._json(simulated),
+                "scoring_used": override,
+                "scoring_default": saved_scoring,
+            }
         except Exception as exc:
             raise self._wrap_error(exc) from exc
 

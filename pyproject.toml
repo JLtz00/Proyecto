@@ -36,6 +36,7 @@ nbo-report = "nbo.reporting:main"
 nbo-audit = "nbo.audit:main"
 nbo-demo = "nbo.demo:main"
 nbo-check = "nbo.bootstrap:main"
+nbo-challenge-kpis = "nbo.challenge_metrics:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

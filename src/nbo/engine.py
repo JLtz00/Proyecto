@@ -14,6 +14,7 @@ import pandas as pd
 
 from .config import load_config
 from .data import clean_semantic_nulls, load_raw
+from .enrichment import compute_uplift_mt, load_enrichment, population_uplift_mt
 from .features import add_pair_features, attach_inference_history, mt_stage, summarize_history
 from .models import load_artifact
 from .persistence import DecisionStore
@@ -23,9 +24,9 @@ from .rules import (
     eligibility_reasons_frame, generate_candidates, score_candidate_frame, score_candidates,
 )
 from .schemas import (
-    CommercialStrategy, CustomerSummary, DecisionTrace, EvidenceConfidence, Explanation,
-    NBOResult, Objection, PlaybookExperiment, PostRejectionAction, Rebate,
-    Recommendation, ScoreBreakdown, Timing,
+    ChurnAssessment, CommercialStrategy, CustomerSummary, DecisionTrace,
+    EvidenceConfidence, Explanation, NBOResult, Objection, PersonaAssignment,
+    PlaybookExperiment, PostRejectionAction, Rebate, Recommendation, ScoreBreakdown, Timing,
 )
 from .validation import validate_data
 from .state import CustomerStateService
@@ -86,6 +87,8 @@ class NBOEngine:
         self._timing_cache: dict[str, pd.DataFrame] = {}
         ranking_path = artifact_dir / "ranking_weights.json"
         self.scoring = self.config["scoring"] if not ranking_path.exists() else json.loads(ranking_path.read_text(encoding="utf-8"))["weights"]
+        self.enrichment = load_enrichment(artifact_dir)
+        self._population_uplift_mt_cached: float | None = None
         self.store = DecisionStore(self.config["project"]["database_path"]) if persist else None
         self.state_service = CustomerStateService(
             self.customers, self.catalog, self.store,
@@ -717,6 +720,7 @@ class NBOEngine:
             raise RuntimeError("No existen ofertas elegibles para el escenario")
         candidates["p_contacto"] = self.contact_model.predict_positive(candidates)
         candidates["p_aceptacion"] = self.acceptance_model.predict_positive(candidates)
+        candidates = self._attach_churn(candidates)
         candidates = score_candidate_frame(candidates, self.catalog, self.scoring, rules)
         return candidates, reference
 
@@ -756,6 +760,33 @@ class NBOEngine:
         LOGGER.info("nbo_batch", extra={"client_count": len(cliente_ids), "latency_ms": round((time.perf_counter() - started) * 1000, 2)})
         return results
 
+    @property
+    def _population_uplift_mt(self) -> float:
+        if self._population_uplift_mt_cached is None:
+            self._population_uplift_mt_cached = population_uplift_mt(self.history, self.catalog)
+        return self._population_uplift_mt_cached
+
+    def _persona_for(self, customer: pd.Series) -> PersonaAssignment:
+        if self.enrichment.personas is None:
+            return PersonaAssignment(disponible=False)
+        frame = pd.DataFrame([customer.to_dict()])
+        cluster = int(self.enrichment.personas.assign(frame)[0])
+        nombre, descripcion = self.enrichment.personas.describe(cluster)
+        return PersonaAssignment(disponible=True, cluster_id=cluster, nombre=nombre, descripcion=descripcion)
+
+    def _churn_for(self, customer: pd.Series) -> ChurnAssessment:
+        if self.enrichment.churn is None:
+            return ChurnAssessment(disponible=False)
+        frame = pd.DataFrame([customer.to_dict()])
+        probability = float(self.enrichment.churn.predict(frame)[0])
+        return ChurnAssessment(
+            disponible=True,
+            probabilidad=probability,
+            nivel=self.enrichment.churn.level(probability),
+            fuente="proxy_operacional",
+            proxy_definition=self.enrichment.churn.proxy_definition,
+        )
+
     def _build_result(
         self, client_id: str, customer: pd.Series, candidates: pd.DataFrame, as_of: pd.Timestamp,
     ) -> NBOResult:
@@ -780,6 +811,11 @@ class NBOEngine:
             version=self.versions["playbook_version"], reason_codes=recommendations[0].reason_codes,
             urgency=recommendations[0].momento.urgencia, variant=experiment.variant,
         )
+        persona = self._persona_for(customer)
+        churn = self._churn_for(customer)
+        uplift_mt = compute_uplift_mt(
+            candidates, population_uplift=self._population_uplift_mt if bool(customer.get("elegible_mt")) else None
+        )
         return NBOResult(
             decision_id=decision_id,
             decision_schema_version=self.config["project"]["decision_schema_version"], versions=self.versions,
@@ -792,6 +828,7 @@ class NBOEngine:
                 consumo_datos_gb_prom=float(customer["consumo_datos_gb_prom"]),
                 canal_mas_usado=str(customer["canal_mas_usado"]), n_reclamos=int(customer["n_reclamos"]),
                 meses_moroso=int(customer["meses_moroso"]),
+                persona=persona, riesgo_fuga=churn, uplift_mt=uplift_mt,
             ),
             recommendation=recommendations[0], alternatives=recommendations[1:], rejection_prediction=objections,
             rebate=rebate, commercial_strategy=strategy, post_rejection_action=post_rejection,
@@ -801,6 +838,15 @@ class NBOEngine:
             state_as_of=pd.Timestamp(customer.get("_state_as_of", as_of)).to_pydatetime(),
             applied_state_event_ids=list(customer.get("_state_event_ids", []) or []),
         )
+
+    def _attach_churn(self, combined: pd.DataFrame) -> pd.DataFrame:
+        if self.enrichment.churn is None:
+            return combined
+        clients = combined.drop_duplicates("cliente_id").set_index("cliente_id")
+        probabilities = self.enrichment.churn.predict(clients)
+        churn_map = dict(zip(clients.index.astype(str), probabilities.tolist()))
+        combined["p_churn"] = combined["cliente_id"].astype(str).map(churn_map).fillna(0.0)
+        return combined
 
     def _candidate_scores_at(
         self,
@@ -818,6 +864,7 @@ class NBOEngine:
         )
         combined["p_contacto"] = self.contact_model.predict_positive(combined)
         combined["p_aceptacion"] = self.acceptance_model.predict_positive(combined)
+        combined = self._attach_churn(combined)
         rules = {**self.config["rules"], "as_of_date": rule_as_of}
         return score_candidate_frame(combined, self.catalog, scoring, rules)
 

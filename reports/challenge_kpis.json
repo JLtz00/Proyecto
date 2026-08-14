@@ -1,0 +1,49 @@
+{
+  "generated_at": "2026-08-14T07:49:35.816021+00:00",
+  "sample_size": 100,
+  "as_of_date": "2026-08-13",
+  "mt_share": {
+    "hogar_total": 51,
+    "mt_hogar": 18,
+    "share_hogar": 0.35294117647058826,
+    "meta_hogar": 0.5,
+    "movil_total": 60,
+    "mt_movil": 18,
+    "share_movil": 0.3,
+    "meta_movil": 0.1
+  },
+  "delta_arpu": {
+    "arpu_base_pen": 81.1986738,
+    "delta_arpu_mes_pen": 40.0949771651046,
+    "delta_arpu_anual_esperado_pen": 144.34191779437654,
+    "margin_rate": 0.3,
+    "expected_months": 12
+  },
+  "repetidas": {
+    "clientes_analizados": 100,
+    "ofertas_repetidas_evitadas": 576,
+    "por_cliente_promedio": 5.76
+  },
+  "personas": {
+    "Nuevo en cartera": 17,
+    "Elegible MT estándar": 16,
+    "Leal precio-sensible": 47,
+    "Perfil de riesgo": 8,
+    "Cliente MT actual": 12
+  },
+  "churn": {
+    "distribution": {
+      "bajo": 82,
+      "alto": 16,
+      "medio": 2
+    },
+    "avg_probability": 0.1767606993808711,
+    "high_risk_share": 0.16
+  },
+  "uplift_mt": {
+    "avg_uplift": 0.3561106517348323,
+    "clientes_con_uplift_alto": 18,
+    "muestras_evaluadas": 18
+  },
+  "disclaimer": "KPIs prospectivos derivados de recomendaciones simuladas sobre la muestra. No son ventas reales, uplift causal ni churn observado."
+}

@@ -327,6 +327,131 @@ def render_guided_demo(api: Any) -> None:
     st.caption("Demo determinista y no persistente. Las cifras mostradas son estimaciones offline, no resultados comerciales reales.")
 
 
+def render_challenge_kpis(api: Any) -> None:
+    """Bloque ejecutivo con los KPIs del Desafío 2."""
+    if not isinstance(api, LocalAdvisorApi):
+        st.info("El cuadro ejecutivo del Desafío 2 solo está disponible con el motor local.", icon=None)
+        return
+    with st.expander("Recalcular con muestra distinta", expanded=False):
+        sample_size = st.slider("Tamaño de muestra", 100, 5000, 500, 100, key="challenge_sample")
+        seed = st.number_input("Semilla", value=42, key="challenge_seed")
+    with st.spinner(f"Simulando recomendaciones sobre {sample_size} clientes…"):
+        kpis = api.challenge_kpis(sample_size=int(sample_size), seed=int(seed))
+    st.warning(kpis["disclaimer"], icon=None)
+    mt = kpis["mt_share"]
+    delta = kpis["delta_arpu"]
+    repetidas = kpis["repetidas"]
+    uplift = kpis["uplift_mt"]
+    churn = kpis["churn"]
+    cols = st.columns(3)
+    cols[0].metric(
+        "MT share hogar", f"{mt['share_hogar'] * 100:.1f}%",
+        help=f"{mt['mt_hogar']}/{mt['hogar_total']} recomendaciones hogar son MT · meta > {mt['meta_hogar']*100:.0f}%",
+    )
+    cols[1].metric(
+        "MT share móvil", f"{mt['share_movil'] * 100:.1f}%",
+        help=f"{mt['mt_movil']}/{mt['movil_total']} recomendaciones móvil son MT · meta > {mt['meta_movil']*100:.0f}%",
+    )
+    cols[2].metric(
+        "ΔARPU anual esperado", money(delta['delta_arpu_anual_esperado_pen']),
+        help=f"Base {money(delta['arpu_base_pen'])}/mes · margen {delta['margin_rate']:.0%} · {delta['expected_months']} meses",
+    )
+    cols = st.columns(3)
+    cols[0].metric(
+        "Ofertas repetidas evitadas", f"{repetidas['ofertas_repetidas_evitadas']:,}",
+        help=f"{repetidas['por_cliente_promedio']:.2f} por cliente · reglas de elegibilidad las filtraron antes del ranking",
+    )
+    cols[1].metric(
+        "Uplift MT promedio", f"{(uplift['avg_uplift'] or 0) * 100:.1f}%",
+        help=f"Δ P(venta) MT vs mediana de alternativas · {uplift.get('clientes_con_uplift_alto', 0)} clientes con uplift ≥ 5%",
+    )
+    cols[2].metric(
+        "Riesgo de fuga promedio", f"{(churn['avg_probability'] or 0) * 100:.1f}%",
+        help=f"Proxy operacional · {(churn.get('high_risk_share') or 0) * 100:.1f}% en nivel alto",
+    )
+    tab_personas, tab_churn = st.tabs(["Personas", "Distribución riesgo de fuga"])
+    with tab_personas:
+        personas = kpis.get("personas", {})
+        if personas:
+            st.bar_chart(pd.Series(personas, name="Clientes"), color="#79a99d")
+        else:
+            st.caption("Sin datos de personas.")
+    with tab_churn:
+        distribution = churn.get("distribution", {})
+        if distribution:
+            st.bar_chart(pd.Series(distribution, name="Clientes"), color="#c27d7d")
+        else:
+            st.caption("Sin datos de riesgo de fuga.")
+
+
+def render_whatif(api: Any) -> None:
+    """Simulador de pesos del ranking (what-if de política comercial)."""
+    st.markdown('<div class="eyebrow">Simulador de política</div>', unsafe_allow_html=True)
+    st.title("What-if de pesos del ranking")
+    st.markdown(
+        '<p class="page-subtitle">Ajusta los pesos del score y compara la NBO base contra la simulada. '
+        'No modifica el modelo ni persiste nada.</p>',
+        unsafe_allow_html=True,
+    )
+    if not isinstance(api, LocalAdvisorApi):
+        st.info("El simulador what-if solo está disponible con el motor local.", icon=None)
+        return
+    default = api.engine.scoring
+    left, right = st.columns([1, 2])
+    with left:
+        cliente_id = st.text_input("Cliente", value="CLI000013")
+        st.caption("Los sliders reemplazan los pesos calibrados del ranking activo.")
+        w_conversion = st.slider("Conversión (P·venta)", 0.0, 1.0, float(default.get("w_conversion", 0.5)), 0.05)
+        w_fit = st.slider("Ajuste al cliente", 0.0, 1.0, float(default.get("w_fit", 0.2)), 0.05)
+        w_business = st.slider("Valor de negocio", 0.0, 1.0, float(default.get("w_business", 0.1)), 0.05)
+        w_mt = st.slider("Prioridad Movistar Total", 0.0, 1.0, float(default.get("w_mt", 0.1)), 0.05)
+        w_friction = st.slider("Penalización de fricción", 0.0, 1.0, float(default.get("w_friction", 0.1)), 0.05)
+        w_churn = st.slider("Penalización por churn", 0.0, 1.0, float(default.get("w_churn", 0.05)), 0.05)
+        submit = st.button("Simular", type="primary", width="stretch")
+    with right:
+        if not submit:
+            st.info("Ajusta los pesos y presiona Simular para ver el impacto.", icon=None)
+            return
+        try:
+            with st.spinner("Recalculando ranking con pesos simulados…"):
+                result = api.what_if(cliente_id, {
+                    "w_conversion": w_conversion, "w_fit": w_fit, "w_business": w_business,
+                    "w_mt": w_mt, "w_friction": w_friction, "w_churn": w_churn,
+                })
+        except AdvisorApiError as exc:
+            st.error(str(exc), icon=None)
+            return
+        base = result["base"]["recommendation"]
+        sim = result["simulated"]["recommendation"]
+        cols = st.columns(2)
+        with cols[0]:
+            st.markdown("**Ranking calibrado (base)**")
+            st.metric(base["nombre_oferta"], f"score {base['score']:.3f}")
+            st.caption(f"{base['canal']} · {money(base['precio_mensual'])} · Venta {percentage(base['probabilidad_venta'])}")
+        with cols[1]:
+            st.markdown("**Ranking simulado (what-if)**")
+            delta_score = sim["score"] - base["score"]
+            st.metric(
+                sim["nombre_oferta"], f"score {sim['score']:.3f}",
+                delta=f"{delta_score:+.3f} vs base",
+            )
+            st.caption(f"{sim['canal']} · {money(sim['precio_mensual'])} · Venta {percentage(sim['probabilidad_venta'])}")
+        cambio = "misma oferta y canal" if (
+            base["oferta_id"] == sim["oferta_id"] and base["canal"] == sim["canal"]
+        ) else f"cambio: {base['oferta_id']}/{base['canal']} → {sim['oferta_id']}/{sim['canal']}"
+        st.caption(f"Efecto: {cambio}.")
+        with st.expander("Top-3 base vs simulado"):
+            base_rows = [{"Fuente": "Base", "Oferta": item["nombre_oferta"], "Canal": item["canal"],
+                          "Score": round(item["score"], 3), "Venta": percentage(item["probabilidad_venta"])}
+                         for item in [result["base"]["recommendation"]] + result["base"]["alternatives"]]
+            sim_rows = [{"Fuente": "Simulado", "Oferta": item["nombre_oferta"], "Canal": item["canal"],
+                         "Score": round(item["score"], 3), "Venta": percentage(item["probabilidad_venta"])}
+                        for item in [result["simulated"]["recommendation"]] + result["simulated"]["alternatives"]]
+            st.dataframe(pd.DataFrame(base_rows + sim_rows), hide_index=True, width="stretch")
+        with st.expander("Pesos aplicados"):
+            st.json({"default": result["scoring_default"], "simulado": result["scoring_used"]}, expanded=False)
+
+
 def render_impact(api: Any) -> None:
     st.markdown('<div class="eyebrow">Impacto y evidencia</div>', unsafe_allow_html=True)
     st.title("Del ofrecimiento a la activación")
@@ -438,6 +563,9 @@ def render_impact(api: Any) -> None:
                 st.json(fairness, expanded=False)
                 st.caption("Edad y ubicación se auditan descriptivamente, pero no se usan para excluir ofertas.")
 
+    st.markdown('<div class="section-title">KPIs del Desafío 2</div>', unsafe_allow_html=True)
+    render_challenge_kpis(api)
+
 
 with st.sidebar:
     st.markdown(
@@ -451,7 +579,11 @@ with st.sidebar:
     view_options = ["Demo guiada", "Impacto y evidencia"]
     if not public_demo:
         view_options.insert(1, "Mesa del asesor")
-    view_map = {"demo": "Demo guiada", "advisor": "Mesa del asesor", "impact": "Impacto y evidencia"}
+        view_options.append("Simulador what-if")
+    view_map = {
+        "demo": "Demo guiada", "advisor": "Mesa del asesor",
+        "impact": "Impacto y evidencia", "whatif": "Simulador what-if",
+    }
     default_view = view_map.get(requested_view, "Demo guiada")
     if default_view not in view_options:
         default_view = "Demo guiada"
@@ -459,7 +591,10 @@ with st.sidebar:
         "Vista", view_options, index=view_options.index(default_view),
         help="La demo pública es aislada; la Mesa del asesor conserva persistencia solo en entornos controlados.",
     )
-    selected_slug = {"Demo guiada": "demo", "Mesa del asesor": "advisor", "Impacto y evidencia": "impact"}[selected_view]
+    selected_slug = {
+        "Demo guiada": "demo", "Mesa del asesor": "advisor",
+        "Impacto y evidencia": "impact", "Simulador what-if": "whatif",
+    }[selected_view]
     if requested_view != selected_slug:
         st.query_params.update({"view": selected_slug})
     with st.expander("Conexión", expanded=False):
@@ -490,6 +625,11 @@ with st.sidebar:
     )
     st.markdown("<br>", unsafe_allow_html=True)
     if selected_view == "Mesa del asesor":
+        simple_view = st.toggle(
+            "Vista simple", value=st.session_state.get("simple_view", False),
+            help="Modo compacto para asesores bajo presión: oferta, canal, 1 razón, 1 speech, 1 objeción y botones grandes.",
+        )
+        st.session_state["simple_view"] = simple_view
         st.caption("Casos de referencia")
         for example_id, description in (
             ("CLI000001", "Completar hogar"),
@@ -510,6 +650,9 @@ if selected_view == "Demo guiada":
     st.stop()
 if selected_view == "Impacto y evidencia":
     render_impact(api)
+    st.stop()
+if selected_view == "Simulador what-if":
+    render_whatif(api)
     st.stop()
 
 
@@ -577,6 +720,62 @@ st.markdown(
     '</div>',
     unsafe_allow_html=True,
 )
+
+if st.session_state.get("simple_view"):
+    _persona = customer.get("persona") or {}
+    _churn = customer.get("riesgo_fuga") or {}
+    persona_bit = _persona.get("nombre") if _persona.get("disponible") else ""
+    churn_bit = ""
+    if _churn.get("disponible"):
+        prob = _churn.get("probabilidad")
+        churn_bit = f"Riesgo fuga {str(_churn.get('nivel', '')).capitalize()}"
+        if prob is not None:
+            churn_bit += f" ({prob * 100:.0f}%)"
+    persona_line = " · ".join(filter(None, [persona_bit, churn_bit]))
+    st.markdown(
+        '<div class="offer-hero"><div class="offer-top"><div>'
+        f'<div class="offer-id">Acción recomendada · {safe(top["oferta_id"])}</div>'
+        f'<div class="offer-name">{safe(top["nombre_oferta"])}</div>'
+        f'<span class="soft-pill">{safe(top["canal"])}</span>'
+        f'<span class="soft-pill">Venta {safe(percentage(top["probabilidad_venta"]))}</span>'
+        + (f'<span class="soft-pill">{safe(persona_line)}</span>' if persona_line else "")
+        + '</div>'
+        f'<div class="offer-price">{safe(money(top["precio_mensual"]))} / mes</div></div>'
+        f'<div class="offer-next"><strong>Por qué:</strong> {safe((top.get("explanation", {}).get("positive") or ["Mejor ajuste disponible"])[0])}</div>'
+        f'<div class="offer-next"><strong>Qué decir:</strong> {safe(playbook["opening"])} {safe(playbook["main_argument"])}</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+    objections = result.get("rejection_prediction", [])
+    if objections:
+        top_obj = objections[0]
+        st.markdown(
+            f'<div class="caution"><strong>Si dice {safe(label_rejection(top_obj["motivo"]))}</strong> '
+            f'({safe(percentage(top_obj["probability"]))}): {safe(playbook["objection_response"])}</div>',
+            unsafe_allow_html=True,
+        )
+    st.markdown('<div class="section-title">Registrar resultado</div>', unsafe_allow_html=True)
+    action_cols = st.columns(3)
+    outcome_labels = [("Aceptó", "aceptada"), ("Rechazó", "rechazada"), ("No contactó", "no_contactado")]
+    for column, (label, outcome_key) in zip(action_cols, outcome_labels):
+        if column.button(label, key=f"simple_{outcome_key}_{context.decision_id}", width="stretch"):
+            payload = {
+                "decision_id": context.decision_id,
+                "resultado_final": outcome_key,
+                "medio_probatorio": "registro_plataforma",
+                "rebate_usado": False,
+            }
+            if outcome_key == "rechazada":
+                payload["motivo_rechazo"] = objections[0]["motivo"] if objections else "otro"
+            try:
+                api.save_feedback(payload)
+                st.session_state.flash_success = True
+                st.session_state.flash_success_text = f"Resultado {label.lower()} registrado."
+                st.rerun()
+            except AdvisorApiError as exc:
+                st.error(str(exc), icon=None)
+    st.caption(f"Decisión {result['decision_id']} · {result['versions']['model_version']}")
+    st.stop()
 
 main_col, side_col = st.columns([1.75, 1], gap="large")
 
@@ -720,6 +919,21 @@ with side_col:
     profile_row("Reclamos", attributes.get("n_reclamos", customer["n_reclamos"]))
     profile_row("Meses con mora", attributes.get("meses_moroso", customer["meses_moroso"]))
     profile_row("Ofertas activas", ", ".join(state.get("active_offer_ids", [])) or "Ninguna")
+
+    persona_info = customer.get("persona") or {}
+    if persona_info.get("disponible"):
+        profile_row("Persona", persona_info.get("nombre", "—"))
+        if persona_info.get("descripcion"):
+            st.caption(persona_info["descripcion"])
+    churn_info = customer.get("riesgo_fuga") or {}
+    if churn_info.get("disponible"):
+        churn_level = str(churn_info.get("nivel", "desconocido")).capitalize()
+        churn_prob = churn_info.get("probabilidad")
+        churn_text = f"{churn_level}" + (f" · {churn_prob * 100:.1f}%" if churn_prob is not None else "")
+        profile_row("Riesgo de fuga", churn_text)
+    uplift_value = customer.get("uplift_mt")
+    if uplift_value is not None:
+        profile_row("Uplift MT estimado", f"{float(uplift_value) * 100:.1f}%")
 
     with st.expander("Ver perfil completo"):
         full_profile = {

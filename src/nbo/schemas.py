@@ -62,6 +62,24 @@ class Recommendation(BaseModel):
     reason_codes: list[str]
 
 
+class ChurnAssessment(BaseModel):
+    """Riesgo de fuga proxy; nunca es churn observado."""
+    disponible: bool
+    probabilidad: float | None = Field(default=None, ge=0, le=1)
+    nivel: Literal["bajo", "medio", "alto", "desconocido"] = "desconocido"
+    fuente: str = "proxy_operacional"
+    proxy_definition: str | None = None
+
+
+class PersonaAssignment(BaseModel):
+    """Segmento asignado por clustering K-Means."""
+    disponible: bool
+    cluster_id: int | None = None
+    nombre: str = "No disponible"
+    descripcion: str = ""
+    modelo: str = "kmeans"
+
+
 class CustomerSummary(BaseModel):
     cliente_id: str
     etapa_mt: str
@@ -77,6 +95,9 @@ class CustomerSummary(BaseModel):
     canal_mas_usado: str
     n_reclamos: int
     meses_moroso: int
+    persona: PersonaAssignment = Field(default_factory=lambda: PersonaAssignment(disponible=False))
+    riesgo_fuga: ChurnAssessment = Field(default_factory=lambda: ChurnAssessment(disponible=False))
+    uplift_mt: float | None = Field(default=None, ge=0, le=1, description="Ganancia estimada de P(venta) al elegir MT vs alternativas elegibles.")
 
 
 class Rebate(BaseModel):

@@ -1,0 +1,125 @@
+{
+  "churn": {
+    "features": [
+      "antiguedad_meses",
+      "monto_facturado_prom",
+      "monto_facturado_prom_6m",
+      "consumo_datos_gb_prom",
+      "consumo_voz_min_prom",
+      "uso_app_movistar_prom",
+      "n_actividad_canal",
+      "n_reclamos",
+      "dias_mora_prom",
+      "meses_moroso",
+      "elegible_mt",
+      "es_movistar_total",
+      "tiene_movil",
+      "tiene_hogar"
+    ],
+    "prevalence_proxy": 0.17509,
+    "metrics": {
+      "brier": 0.03503441753950122,
+      "log_loss": 0.12134676851091931,
+      "roc_auc": 0.9860251616612752,
+      "prevalence": 0.17509
+    },
+    "proxy_definition": "Proxy: 1 si (caída_facturación<0.70 y antigüedad>=6) o sin servicios activos o dias_mora_prom>20 o meses_moroso>=3 o n_reclamos>=3. No es churn observado."
+  },
+  "personas": {
+    "k": 5,
+    "features": [
+      "antiguedad_meses",
+      "monto_facturado_prom",
+      "consumo_datos_gb_prom",
+      "consumo_voz_min_prom",
+      "uso_app_movistar_prom",
+      "n_actividad_canal",
+      "n_reclamos",
+      "dias_mora_prom",
+      "elegible_mt",
+      "es_movistar_total"
+    ],
+    "names": {
+      "0": "Leal precio-sensible",
+      "1": "Elegible MT estándar",
+      "2": "Perfil de riesgo",
+      "3": "Cliente MT actual",
+      "4": "Nuevo en cartera"
+    },
+    "descriptions": {
+      "0": "Cliente antiguo con facturación moderada; alternativas de precio funcionan mejor.",
+      "1": "Cumple condiciones para MT; presentar tier acorde a facturación.",
+      "2": "Señales de fricción operacional; contactar con prudencia y ofertas de bajo riesgo.",
+      "3": "Ya posee Movistar Total; priorizar profundización y satisfacción.",
+      "4": "Cliente reciente con historial corto; priorizar retención y valor claro."
+    },
+    "stats": {
+      "0": {
+        "size": 44952.0,
+        "antiguedad_meses": 119.48602954262324,
+        "monto_facturado_prom": 72.29784458978466,
+        "consumo_datos_gb_prom": 27.24767307350062,
+        "consumo_voz_min_prom": 181.11305763184433,
+        "uso_app_movistar_prom": 2.2425031144331733,
+        "n_actividad_canal": 5.370484071898915,
+        "n_reclamos": 0.04845168179391351,
+        "dias_mora_prom": 4.255142522394258,
+        "elegible_mt": 0.0,
+        "es_movistar_total": 0.0
+      },
+      "1": {
+        "size": 12717.0,
+        "antiguedad_meses": 90.94975230007077,
+        "monto_facturado_prom": 68.97611779507746,
+        "consumo_datos_gb_prom": 30.067985111792613,
+        "consumo_voz_min_prom": 180.00492778695184,
+        "uso_app_movistar_prom": 2.265825273256271,
+        "n_actividad_canal": 5.397892584729103,
+        "n_reclamos": 0.1945427380671542,
+        "dias_mora_prom": 7.653495321223559,
+        "elegible_mt": 1.0,
+        "es_movistar_total": 0.0
+      },
+      "2": {
+        "size": 10883.0,
+        "antiguedad_meses": 83.14058623541302,
+        "monto_facturado_prom": 82.84328677754296,
+        "consumo_datos_gb_prom": 40.193233942846646,
+        "consumo_voz_min_prom": 180.7361328065178,
+        "uso_app_movistar_prom": 2.2441116113816655,
+        "n_actividad_canal": 5.458329504732151,
+        "n_reclamos": 2.4604428925847652,
+        "dias_mora_prom": 10.89619896474624,
+        "elegible_mt": 0.08481117338969034,
+        "es_movistar_total": 0.0
+      },
+      "3": {
+        "size": 7194.0,
+        "antiguedad_meses": 91.06060606060606,
+        "monto_facturado_prom": 189.9738017792605,
+        "consumo_datos_gb_prom": 41.47521105550922,
+        "consumo_voz_min_prom": 181.0500648688722,
+        "uso_app_movistar_prom": 2.237350569919377,
+        "n_actividad_canal": 5.410619961078677,
+        "n_reclamos": 0.45287739783152625,
+        "dias_mora_prom": 8.03250393846724,
+        "elegible_mt": 0.0,
+        "es_movistar_total": 1.0
+      },
+      "4": {
+        "size": 24254.0,
+        "antiguedad_meses": 39.57582254473489,
+        "monto_facturado_prom": 71.1021010967263,
+        "consumo_datos_gb_prom": 25.775172617575112,
+        "consumo_voz_min_prom": 180.89948049806213,
+        "uso_app_movistar_prom": 2.2785038893928147,
+        "n_actividad_canal": 5.427805722767379,
+        "n_reclamos": 0.08889255380555784,
+        "dias_mora_prom": 13.71686457216679,
+        "elegible_mt": 0.00041230312525768946,
+        "es_movistar_total": 0.0
+      }
+    }
+  },
+  "seed": 42
+}

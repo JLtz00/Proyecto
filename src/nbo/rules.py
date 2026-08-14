@@ -137,15 +137,21 @@ def score_candidates(customer: pd.Series, candidates: pd.DataFrame, catalog: pd.
         float(rules["cooldown_penalty"]), 0.0,
     )
     data["p_venta"] = (data["p_contacto"] * data["p_aceptacion"]).clip(0, 1)
+    if "p_churn" in data.columns:
+        data["p_churn"] = pd.to_numeric(data["p_churn"], errors="coerce").fillna(0.0).clip(0, 1)
+    else:
+        data["p_churn"] = 0.0
     data["score_conversion_component"] = float(scoring["w_conversion"]) * data["p_venta"]
     data["score_fit_component"] = float(scoring["w_fit"]) * data["fit_cliente"]
     data["score_business_component"] = float(scoring["w_business"]) * data["valor_negocio"]
     data["score_mt_component"] = float(scoring["w_mt"]) * data["bonus_ruta_mt"]
     data["score_friction_component"] = -float(scoring["w_friction"]) * data["friccion_candidato"]
     data["score_cooldown_component"] = -data["penalizacion_cooldown"]
+    data["score_churn_component"] = -float(scoring.get("w_churn", 0.0)) * data["p_churn"]
     data["score_raw"] = data[[
         "score_conversion_component", "score_fit_component", "score_business_component",
         "score_mt_component", "score_friction_component", "score_cooldown_component",
+        "score_churn_component",
     ]].sum(axis=1)
     data["score"] = data["score_raw"].clip(0, 1)
     return data
@@ -179,15 +185,21 @@ def score_candidate_frame(candidates: pd.DataFrame, catalog: pd.DataFrame, scori
         float(rules["cooldown_penalty"]), 0.0,
     )
     data["p_venta"] = (data["p_contacto"] * data["p_aceptacion"]).clip(0, 1)
+    if "p_churn" not in data.columns:
+        data["p_churn"] = 0.0
+    else:
+        data["p_churn"] = pd.to_numeric(data["p_churn"], errors="coerce").fillna(0.0).clip(0, 1)
     data["score_conversion_component"] = float(scoring["w_conversion"]) * data["p_venta"]
     data["score_fit_component"] = float(scoring["w_fit"]) * data["fit_cliente"]
     data["score_business_component"] = float(scoring["w_business"]) * data["valor_negocio"]
     data["score_mt_component"] = float(scoring["w_mt"]) * data["bonus_ruta_mt"]
     data["score_friction_component"] = -float(scoring["w_friction"]) * data["friccion_candidato"]
     data["score_cooldown_component"] = -data["penalizacion_cooldown"]
+    data["score_churn_component"] = -float(scoring.get("w_churn", 0.0)) * data["p_churn"]
     data["score_raw"] = data[[
         "score_conversion_component", "score_fit_component", "score_business_component",
         "score_mt_component", "score_friction_component", "score_cooldown_component",
+        "score_churn_component",
     ]].sum(axis=1)
     data["score"] = data["score_raw"].clip(0, 1)
     return data
