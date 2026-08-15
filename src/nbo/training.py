@@ -15,7 +15,7 @@ from .config import load_config
 from .data import clean_semantic_nulls, load_raw
 from .features import apply_smoothing_alpha, build_historical_features, model_feature_columns
 from .models import (
-    FramePreprocessor, ModelArtifact, RateArtifact, binary_metrics, fit_calibrator,
+    FramePreprocessor, LogisticArtifact, ModelArtifact, RateArtifact, binary_metrics, fit_calibrator,
     fit_catboost, fit_hierarchical_multiclass_prior, fit_logistic_baseline,
     multiclass_metrics, save_artifact,
 )
@@ -104,6 +104,9 @@ def _train_binary(
     max_tie = float(config["calibration"]["max_tie_rate"])
 
     logistic = fit_logistic_baseline(train, y_train, categorical, numeric)
+    logistic_artifact = LogisticArtifact(
+        logistic, categorical + numeric, list(logistic.classes_),
+    )
     logistic_validation = logistic.predict_proba(validation[categorical + numeric])[:, 1]
     logistic_metrics = binary_metrics(y_validation, logistic_validation)
     fallback, fallback_calibration = _calibrated_rate(validation, y_validation, rate_column, max_tie)
@@ -136,7 +139,10 @@ def _train_binary(
         full_models.append((artifact, item["params"], metrics, calibration))
     cat_artifact, cat_params, cat_metrics, cat_calibration = min(full_models, key=lambda item: (item[2]["brier"], item[2]["log_loss"]))
 
-    reference = min((logistic_metrics, fallback_metrics), key=lambda value: (value["brier"], value["log_loss"]))
+    reference_artifact, reference = min(
+        ((logistic_artifact, logistic_metrics), (fallback, fallback_metrics)),
+        key=lambda item: (item[1]["brier"], item[1]["log_loss"]),
+    )
     relative_brier = (reference["brier"] - cat_metrics["brier"]) / max(reference["brier"], 1e-12)
     relative_logloss = (reference["log_loss"] - cat_metrics["log_loss"]) / max(reference["log_loss"], 1e-12)
     gate = config["champion_gate"]
@@ -144,7 +150,7 @@ def _train_binary(
         max(relative_brier, relative_logloss) >= float(gate["relative_loss_improvement"])
         and cat_metrics.get("roc_auc", 0.5) - reference.get("roc_auc", 0.5) >= float(gate["auc_improvement"])
     )
-    selected = cat_artifact if passed else fallback
+    selected = cat_artifact if passed else reference_artifact
     test_probability = selected.predict_positive(test)
     metrics = {
         "rows": {"train": len(train), "validation": len(validation), "test": len(test)},
@@ -157,11 +163,12 @@ def _train_binary(
         "catboost_calibration_candidates": cat_calibration,
         "selected_kind": selected.model_kind,
         "selected_calibration": selected.calibration_method,
+        "best_baseline_kind": reference_artifact.model_kind,
         "gate": {"passed": passed, "relative_brier": relative_brier, "relative_log_loss": relative_logloss},
         "test": binary_metrics(y_test, test_probability),
         "test_slices": _binary_slices(test, y_test, test_probability),
     }
-    return selected, fallback, metrics
+    return selected, reference_artifact, metrics
 
 
 def _train_rejection(
@@ -251,7 +258,12 @@ def _write_model_card(path: Path, metadata: dict) -> None:
         f"- Contacto: `{tasks['contact']['selected_kind']}`.",
         f"- Aceptación: `{tasks['acceptance']['selected_kind']}`.",
         f"- Rechazo: `{tasks['rejection']['selected_kind']}`.", "",
+        "## Métricas de test", "",
+        f"- Contacto: roc_auc={tasks['contact']['test'].get('roc_auc', .5):.4f}, brier={tasks['contact']['test']['brier']:.4f}, log_loss={tasks['contact']['test']['log_loss']:.4f}.",
+        f"- Aceptación condicionada a contacto: roc_auc={tasks['acceptance']['test'].get('roc_auc', .5):.4f}, brier={tasks['acceptance']['test']['brier']:.4f}, log_loss={tasks['acceptance']['test']['log_loss']:.4f}.",
+        f"- Motivo de rechazo: accuracy={tasks['rejection']['test']['accuracy']:.4f}, macro_f1={tasks['rejection']['test']['macro_f1']:.4f}, log_loss={tasks['rejection']['test']['log_loss']:.4f}.", "",
         "## Limitaciones y uso responsable", "",
+        "- La señal histórica de contacto no diferencia clientes de forma concluyente; se conserva el baseline calibrado.",
         "- El perfil es un resumen estático de seis meses, no un snapshot mensual perfecto.",
         "- La evaluación observacional refleja la política histórica y no demuestra causalidad.",
         "- Precio normalizado es un proxy de valor; no existe margen en los datos.",

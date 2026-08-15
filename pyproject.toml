@@ -11,6 +11,8 @@ requires-python = ">=3.11"
 dependencies = [
   "catboost>=1.2.5",
   "fastapi>=0.115",
+  "Flask>=3.1",
+  "Flask-WTF>=1.2",
   "httpx>=0.27",
   "joblib>=1.4",
   "numpy>=1.26",
@@ -18,8 +20,8 @@ dependencies = [
   "pydantic>=2.7",
   "pyyaml>=6.0",
   "scikit-learn>=1.5",
-  "streamlit>=1.50",
   "uvicorn[standard]>=0.30",
+  "waitress>=3.0",
 ]
 
 [project.optional-dependencies]
@@ -36,9 +38,22 @@ nbo-report = "nbo.reporting:main"
 nbo-audit = "nbo.audit:main"
 nbo-demo = "nbo.demo:main"
 nbo-check = "nbo.bootstrap:main"
+nbo-advisor = "nbo.advisor_app.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"nbo.advisor_app" = [
+  "templates/*.html",
+  "templates/partials/*.html",
+  "static/css/*.css",
+  "static/js/*.js",
+  "static/*.svg",
+  "static/img/*.ico",
+  "static/img/*.png",
+  "static/vendor/*",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

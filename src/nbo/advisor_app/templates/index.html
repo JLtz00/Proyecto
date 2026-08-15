@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block body %}
+<header class="topbar">
+  <a class="brand" href="{{ url_for('advisor.index') }}" aria-label="Ir al inicio">
+    <img class="brand-logo" src="{{ url_for('static', filename='img/Logo_nbo_ui.png') }}" alt="">
+    <span>Mesa del asesor</span>
+  </a>
+  <div class="topbar-actions">
+    <div class="engine-status" role="status">
+      <span class="status-dot {{ 'online' if health.status == 'ok' else 'offline' }}"></span>
+      {% if health.status == 'ok' %}Sistema listo{% else %}Sistema no disponible{% endif %}
+    </div>
+    <button class="theme-toggle" type="button" data-theme-toggle aria-label="Cambiar a tema claro" title="Cambiar tema">
+      <svg class="icon theme-icon icon-sun" aria-hidden="true"><use href="{{ url_for('static', filename='icons.svg') }}#sun"></use></svg>
+      <svg class="icon theme-icon icon-moon" aria-hidden="true"><use href="{{ url_for('static', filename='icons.svg') }}#moon"></use></svg>
+    </button>
+  </div>
+</header>
+<main id="main-content" class="page-shell">
+  <section class="home-hero {{ 'compact' if context or error else '' }}" aria-labelledby="page-title">
+    <div class="hero-content">
+      <p class="eyebrow">Espacio del asesor</p>
+      <h1 id="page-title">La próxima conversación,<br><span>mejor decidida.</span></h1>
+      <p class="hero-summary">Encuentra la mejor oferta y prepárate para conversar.</p>
+
+      <form class="search-form" action="{{ url_for('advisor.index') }}" method="get"
+            hx-get="{{ url_for('advisor.customer_search') }}" hx-target="#workspace"
+            hx-swap="innerHTML focus-scroll:true" hx-indicator="#workspace-loading"
+            hx-disabled-elt="find button">
+        <label for="cliente_id">Identificador del cliente</label>
+        <div class="search-row">
+          <span class="search-input-wrap">
+            <svg class="icon" aria-hidden="true"><use href="{{ url_for('static', filename='icons.svg') }}#search"></use></svg>
+            <input id="cliente_id" name="cliente_id" value="{{ cliente_id|default('') }}"
+                   placeholder="CLI000001" autocomplete="off" required aria-describedby="search-help">
+          </span>
+          <button class="button primary" type="submit">
+            Consultar
+            <svg class="icon" aria-hidden="true"><use href="{{ url_for('static', filename='icons.svg') }}#arrow-right"></use></svg>
+          </button>
+        </div>
+        <small id="search-help">Consulta la recomendación preparada para este cliente.</small>
+      </form>
+
+      {% if not context and not error %}
+      <nav class="quick-clients" aria-label="Clientes de referencia">
+        <span>Probar con</span>
+        {% for example_id in ('CLI000001', 'CLI000013', 'CLI000018') %}
+        <a href="{{ url_for('advisor.index', cliente_id=example_id) }}"
+           hx-get="{{ url_for('advisor.customer_workspace', cliente_id=example_id) }}"
+           hx-target="#workspace" hx-swap="innerHTML focus-scroll:true"
+           hx-indicator="#workspace-loading" data-client-example="{{ example_id }}">{{ example_id }}</a>
+        {% endfor %}
+      </nav>
+      {% endif %}
+    </div>
+    {% if not context and not error %}
+    <div class="hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 420" role="presentation">
+        <circle class="orbit orbit-one" cx="260" cy="210" r="155"></circle>
+        <circle class="orbit orbit-two" cx="260" cy="210" r="105"></circle>
+        <path class="signal-path" d="M70 292 C145 292 150 122 260 122 S365 292 450 292"></path>
+        <circle class="node node-one" cx="106" cy="282" r="10"></circle>
+        <circle class="node node-two" cx="260" cy="122" r="10"></circle>
+        <circle class="node node-three" cx="414" cy="282" r="10"></circle>
+        <rect class="decision-core" x="188" y="172" width="144" height="76" rx="18"></rect>
+        <text x="260" y="207" text-anchor="middle">NEXT BEST</text>
+        <text class="core-action" x="260" y="229" text-anchor="middle">ACTION</text>
+        <use class="spark spark-one" href="{{ url_for('static', filename='icons.svg') }}#spark" x="374" y="80" width="30" height="30"></use>
+        <use class="spark spark-two" href="{{ url_for('static', filename='icons.svg') }}#spark" x="104" y="106" width="20" height="20"></use>
+      </svg>
+    </div>
+    {% endif %}
+  </section>
+
+  <div id="workspace-loading" class="htmx-indicator skeleton" aria-hidden="true">
+    <span></span><span></span><span></span>
+  </div>
+  <section id="workspace" aria-live="polite" aria-busy="false">
+    {% if error %}{% include "partials/error.html" %}
+    {% elif context %}{% include "partials/workspace.html" %}
+    {% else %}{% include "partials/empty.html" %}{% endif %}
+  </section>
+</main>
+{% endblock %}

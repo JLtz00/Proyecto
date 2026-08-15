@@ -217,13 +217,13 @@ Arquitectura:
 
 Preferencia para hackathon:
 
--   Streamlit
+-   Flask + Jinja + HTMX local
 
 Alternativa:
 
 -   React + FastAPI
 
-Para el MVP, **Streamlit + FastAPI opcional** es suficiente.
+Para el MVP, **Flask + HTMX local y FastAPI opcional** es suficiente.
 
 ## IA generativa
 
@@ -296,7 +296,7 @@ nbo-movistar/
 │   └── calibrate.py
 │
 ├── app/
-│   ├── streamlit_app.py
+│   ├── advisor_app/          # Mesa Flask local
 │   └── components/
 │
 ├── tests/
@@ -2609,7 +2609,7 @@ uvicorn src.api:app --reload
 Dashboard:
 
 ``` bash
-streamlit run app/streamlit_app.py
+nbo-advisor --no-browser
 ```
 
 ------------------------------------------------------------------------

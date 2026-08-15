@@ -84,7 +84,7 @@ Los CSV limpios del EDA no se utilizan para entrenar porque contienen agregacion
 - Simulación aislada, recorrido de rechazo reproducible y escenarios económicos.
 - Renderizador LLM opcional, validado y fuera del ranking.
 - Model card y reportes JSON versionados.
-- Mesa comercial Streamlit final para búsqueda, recomendación, guion, contexto, feedback, activación y recálculo closed-loop.
+- Mesa local Flask + HTMX para búsqueda, recomendación, guion, contexto, feedback, activación y recálculo closed-loop.
 
 ## 4. Resultado real del entrenamiento
 
@@ -249,7 +249,7 @@ Para demostrar potencial, el motor permite comparar escenarios sin modificar el 
 | Pruebas, model card y reportes | Completo |
 | Frontend y dashboard final | Completo para uso local del asesor |
 | Piloto con feedback real | Pendiente |
-| Streamlit Community Cloud | Configurado; activación de URL pendiente de autorización del propietario |
+| Mesa local Flask + Waitress | Operativa en `127.0.0.1`; no requiere despliegue externo |
 | Controles corporativos de producción | Pendiente |
 
 La demo del motor ya puede reproducirse con `CLI000013` (elegible MT), `CLI000001` (ruta hacia MT) y `CLI000018` (ya posee MT).

@@ -299,6 +299,27 @@ class DecisionStore:
             raise ValueError("trace_unavailable_for_legacy_decision")
         return json.loads(row["response_json"])
 
+    def get_decision_interaction(self, decision_id: str) -> dict[str, Any]:
+        """Estado de operación de una decisión para interfaces locales."""
+        if not self.decision_exists(decision_id):
+            raise KeyError(decision_id)
+        with self.connect() as connection:
+            feedback = connection.execute(
+                "SELECT * FROM feedback_events WHERE decision_id=?", (decision_id,),
+            ).fetchone()
+            events = connection.execute(
+                "SELECT event_type FROM funnel_events WHERE decision_id=?", (decision_id,),
+            ).fetchall()
+        decoded = dict(feedback) if feedback is not None else None
+        if decoded and decoded.get("post_rejection_action_json"):
+            decoded["post_rejection_action"] = json.loads(
+                decoded.pop("post_rejection_action_json")
+            )
+        return {
+            "feedback": decoded,
+            "funnel_events": {row["event_type"] for row in events},
+        }
+
     def save_llm_render_event(self, payload: dict[str, Any]) -> int:
         if not self.decision_exists(payload["decision_id"]):
             raise KeyError(payload["decision_id"])

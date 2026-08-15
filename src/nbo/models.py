@@ -119,6 +119,28 @@ class ModelArtifact:
 
 
 @dataclass
+class LogisticArtifact:
+    """Baseline sklearn persistible con la interfaz común del motor."""
+
+    estimator: Any
+    columns: list[str]
+    classes: list[Any]
+    calibration_method: str = "none"
+    model_kind: str = "logistic"
+
+    def predict_positive(self, frame: pd.DataFrame) -> np.ndarray:
+        missing = sorted(set(self.columns).difference(frame.columns))
+        if missing:
+            raise ValueError(f"Feature schema incompatible; faltan: {missing}")
+        probability = np.asarray(self.estimator.predict_proba(frame[self.columns]))
+        positive_index = self.classes.index(1)
+        return np.clip(probability[:, positive_index], 0, 1)
+
+    def local_contributions(self, frame: pd.DataFrame) -> list[dict[str, float]]:
+        return [{} for _ in range(len(frame))]
+
+
+@dataclass
 class RateArtifact:
     """Fallback auditable basado en una tasa histórica jerárquica calibrada."""
 

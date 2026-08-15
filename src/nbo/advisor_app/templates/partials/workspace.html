@@ -1,0 +1,324 @@
+{% set result = context.result %}
+{% set customer = result.cliente %}
+{% set top = result.recommendation %}
+{% set strategy = result.commercial_strategy %}
+{% set playbook = result.sales_playbook %}
+{% set confidence = result.evidence_confidence %}
+{% set state = context.state %}
+{% set attrs = state.attributes %}
+{% set interaction = context.interaction %}
+{% set feedback = interaction.feedback %}
+{% set accepted = feedback and (feedback.final_result == 'aceptada' or (feedback.rebate_used and feedback.rebate_result == 'aceptada')) %}
+{% set contacted = 'contacted' in interaction.funnel_events %}
+
+{% if toast %}<div class="toast" role="status" tabindex="-1" data-toast data-focus-message>{{ toast }}</div>{% endif %}
+
+<div class="context-strip" aria-label="Resumen de la consulta" data-decision-id="{{ result.decision_id }}">
+  <span>Cliente <strong>{{ customer.cliente_id }}</strong></span>
+  <span class="separator">·</span>
+  <span class="pill stage">{{ customer.etapa_mt|stage_label }}</span>
+  <span class="separator">·</span>
+  <span>Meta de la conversación: <strong>{{ strategy.objective|objective_label }}</strong></span>
+  <span class="separator">·</span>
+  <span class="information-status confidence-{{ confidence.level }}">{{ advisor_confidence(confidence) }}</span>
+</div>
+
+<div class="workspace-grid">
+  <div class="primary-column">
+    <article class="offer-hero" aria-labelledby="offer-title">
+      <div>
+        <p class="eyebrow">Recomendación principal</p>
+        <h2 id="offer-title">{{ top.nombre_oferta }}</h2>
+        <div class="pill-row" aria-label="Cómo actuar">
+          <span class="pill">Contactar por {{ top.canal }}</span>
+          <span class="pill">{{ top.momento.momento|moment_label }}</span>
+          <span class="pill priority-{{ top.momento.urgencia }}">{{ top.momento.urgencia|urgency_label }}</span>
+        </div>
+      </div>
+      <div class="price">{{ top.precio_mensual|money }}<small>al mes</small></div>
+      <div class="advisor-action">
+        <span>Qué hacer ahora</span>
+        <strong>{{ advisor_next_step(strategy, top.nombre_oferta) }}</strong>
+      </div>
+    </article>
+
+    {% if top.momento.recommended_date or top.momento.recommended_weekday %}
+    <p class="simple-timing">
+      <strong>Mejor momento:</strong>
+      {{ top.momento.recommended_weekday|default('', true)|capitalize }}{% if top.momento.recommended_date %}, {{ top.momento.recommended_date }}{% endif %}.
+    </p>
+    {% endif %}
+
+    <section class="advisor-signals" aria-labelledby="signals-title">
+      <div class="section-heading">
+        <div><p class="eyebrow">Lectura rápida</p><h3 id="signals-title">¿Qué tan buena es esta oportunidad?</h3></div>
+        <p>Los indicadores orientan la conversación; no garantizan un resultado.</p>
+      </div>
+      <div class="metrics plain-metrics">
+        <div>
+          <span>Ajuste con el cliente</span>
+          <p class="metric-value level-{{ top.score|advisor_fit_level_key }}"><strong>{{ top.score|advisor_fit_level }}</strong><b>{{ (top.score * 100)|round|int }} pts</b></p>
+          <small>Combina su necesidad, la oferta, el precio y el canal.</small>
+        </div>
+        <div>
+          <span>Facilidad para contactar</span>
+          <p class="metric-value level-{{ top.probabilidad_contacto|advisor_level_key }}"><strong>{{ top.probabilidad_contacto|advisor_level }}</strong><b>{{ top.probabilidad_contacto|percentage }}</b></p>
+          <small>Estima el canal; puede ser similar si el historial no muestra diferencias claras.</small>
+        </div>
+        <div>
+          <span>Interés si responde</span>
+          <p class="metric-value level-{{ top.probabilidad_aceptacion|advisor_level_key }}"><strong>{{ top.probabilidad_aceptacion|advisor_level }}</strong><b>{{ top.probabilidad_aceptacion|percentage }}</b></p>
+          <small>Estima la aceptación usando el perfil, la oferta y su historial.</small>
+        </div>
+      </div>
+    </section>
+
+    <div class="tabs" data-tabs>
+      <div class="tab-list" role="tablist" aria-label="Información para la conversación">
+        <button role="tab" id="tab-script" aria-controls="panel-script" aria-selected="true">Guion para conversar</button>
+        <button role="tab" id="tab-reasons" aria-controls="panel-reasons" aria-selected="false" tabindex="-1">Por qué se recomienda</button>
+        <button role="tab" id="tab-alts" aria-controls="panel-alts" aria-selected="false" tabindex="-1">Si no acepta</button>
+        <button role="tab" id="tab-trace" aria-controls="panel-trace" aria-selected="false" tabindex="-1">Análisis completo</button>
+      </div>
+
+      <section role="tabpanel" id="panel-script" aria-labelledby="tab-script">
+        <div class="section-heading tab-heading">
+          <div><h3>Conversación sugerida</h3><p>Sigue este orden y adapta las palabras a tu estilo.</p></div>
+        </div>
+        <dl class="script-lines advisor-script">
+          <div><dt>1. Inicia</dt><dd>{{ playbook.opening }}</dd></div>
+          <div><dt>2. Pregunta</dt><dd>{{ playbook.discovery_question }}</dd></div>
+          <div><dt>3. Explica</dt><dd>{{ playbook.main_argument }}</dd></div>
+          <div><dt>4. Destaca</dt><dd>{{ playbook.verified_benefit }}</dd></div>
+          <div><dt>5. Cierra</dt><dd>{{ playbook.close }}</dd></div>
+        </dl>
+        <div class="ready-script-block">
+          <label for="ready-script">Guion completo para copiar</label>
+          <textarea id="ready-script" readonly>{{ playbook.suggested_script }}</textarea>
+          <button type="button" class="button secondary" data-copy-target="ready-script">Copiar guion</button>
+        </div>
+
+        <h3>Objeciones que conviene preparar</h3>
+        <p class="section-intro">Aparecen primero las más probables. Los porcentajes exactos están en “Análisis completo”.</p>
+        <ul class="objections plain-objections">
+          {% for objection in result.rejection_prediction %}
+          <li><span>{{ loop.index }}</span><strong>{{ objection.motivo|rejection_label }}</strong></li>
+          {% endfor %}
+        </ul>
+        <div class="callout"><strong>Si surge una objeción, responde así</strong><p>{{ playbook.objection_response }}</p></div>
+        <div class="caution"><strong>Después de un rechazo:</strong> {{ playbook.post_rejection_guidance }}</div>
+      </section>
+
+      <section role="tabpanel" id="panel-reasons" aria-labelledby="tab-reasons" hidden>
+        <h3>Por qué puede funcionar</h3>
+        <p class="section-intro">Estas son las señales más importantes que respaldan la recomendación.</p>
+        <ul class="reason-list">{% for item in top.explanation.positive %}<li>{{ item }}</li>{% endfor %}</ul>
+
+        <h3>Qué debes tener en cuenta</h3>
+        {% if top.explanation.negative %}
+          {% for item in top.explanation.negative %}<div class="caution">{{ item }}</div>{% endfor %}
+        {% else %}<p class="status-note success">No se detectaron precauciones adicionales.</p>{% endif %}
+
+        <h3>Beneficio principal para el cliente</h3>
+        <div class="callout client-value">{{ top.beneficio_cliente }}</div>
+      </section>
+
+      <section role="tabpanel" id="panel-alts" aria-labelledby="tab-alts" hidden>
+        <h3>Otras opciones disponibles</h3>
+        <p class="section-intro">Úsalas solo si la recomendación principal no encaja con la necesidad del cliente.</p>
+        {% set alternatives = alternative_rows(result.alternatives) %}
+        {% if alternatives %}
+        <div class="table-wrap"><table><thead><tr>{% for key in alternatives[0] %}<th>{{ key }}</th>{% endfor %}</tr></thead>
+          <tbody>{% for row in alternatives %}<tr>{% for value in row.values() %}<td>{{ value }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>
+        {% else %}<p class="muted">No hay otras ofertas adecuadas para este cliente.</p>{% endif %}
+
+        <h3>Si necesita una alternativa</h3>
+        <div class="callout"><strong>Cómo presentarla</strong><p>{{ result.rebate.speech }}</p></div>
+        {% if result.rebate.alternative_offer_id %}<p class="muted">Oferta alternativa registrada: {{ result.rebate.alternative_offer_id }}</p>{% endif %}
+      </section>
+
+      <section role="tabpanel" id="panel-trace" aria-labelledby="tab-trace" hidden>
+        <div class="technical-intro">
+          <p class="eyebrow">Consulta avanzada</p>
+          <h3>Análisis completo del cliente y la decisión</h3>
+          <p>Aquí se conservan los valores exactos, fuentes y versiones para una revisión más profunda.</p>
+        </div>
+
+        <details open><summary>Indicadores exactos y criterio comercial</summary>
+          <dl class="profile-list">
+            <div><dt>ID de oferta</dt><dd>{{ top.oferta_id }}</dd></div>
+            <div><dt>Canal elegido</dt><dd>{{ top.canal }}</dd></div>
+            <div><dt>Probabilidad de contacto</dt><dd>{{ top.probabilidad_contacto|percentage }}</dd></div>
+            <div><dt>Probabilidad de aceptación condicionada</dt><dd>{{ top.probabilidad_aceptacion|percentage }}</dd></div>
+            <div><dt>Probabilidad de venta</dt><dd>{{ top.probabilidad_venta|percentage }}</dd></div>
+            <div><dt>Score interno de ranking</dt><dd>{{ '%.4f'|format(top.score) }}</dd></div>
+            <div><dt>Momento calculado</dt><dd>{{ top.momento.momento }}</dd></div>
+            <div><dt>Urgencia</dt><dd>{{ top.momento.urgencia }}</dd></div>
+            <div><dt>Base temporal</dt><dd>{{ top.momento.basis }}</dd></div>
+            <div><dt>Soporte temporal</dt><dd>{{ top.momento.support }}</dd></div>
+            <div><dt>Confianza temporal</dt><dd>{{ top.momento.confidence }}</dd></div>
+            <div><dt>Señal que activó el momento</dt><dd>{{ top.momento.trigger|default('—', true) }}</dd></div>
+            <div><dt>Momento optimizado por el modelo</dt><dd>{{ top.momento.is_model_optimized }}</dd></div>
+            <div><dt>Valor para el negocio</dt><dd>{{ top.beneficio_negocio }}</dd></div>
+            <div><dt>Razonamiento comercial</dt><dd>{{ strategy.rationale }}</dd></div>
+            <div><dt>Siguiente paso calculado</dt><dd>{{ strategy.next_step }}</dd></div>
+            <div><dt>Estrategia de rebate</dt><dd>{{ result.rebate.strategy }}</dd></div>
+          </dl>
+        </details>
+
+        <details><summary>Objeciones y códigos de evidencia</summary>
+          <ul class="objections">
+            {% for objection in result.rejection_prediction %}
+            <li><span>{{ objection.motivo|rejection_label }}</span><strong>{{ objection.probability|percentage }}</strong></li>
+            {% endfor %}
+          </ul>
+          <pre>{{ {'reason_codes': top.reason_codes, 'evidence_codes': playbook.evidence_codes, 'do_not_say': playbook.do_not_say}|tojson(indent=2) }}</pre>
+        </details>
+
+        <details><summary>Calidad y soporte de la información</summary>
+          <dl class="profile-list">
+            <div><dt>Nivel</dt><dd>{{ confidence.level|capitalize }}</dd></div>
+            <div><dt>Cold start</dt><dd>{{ confidence.cold_start }}</dd></div>
+            <div><dt>Eventos del cliente</dt><dd>{{ confidence.client_events }}</dd></div>
+            <div><dt>Exposiciones a la oferta</dt><dd>{{ confidence.client_offer_exposures }}</dd></div>
+            <div><dt>Contactos por canal</dt><dd>{{ confidence.client_channel_contacts }}</dd></div>
+            <div><dt>Soporte relevante</dt><dd>{{ confidence.relevant_support }}</dd></div>
+            <div><dt>Fuente de contacto</dt><dd>{{ confidence.contact_source }}</dd></div>
+            <div><dt>Fuente de aceptación</dt><dd>{{ confidence.acceptance_source }}</dd></div>
+            <div><dt>Fuente de rechazo</dt><dd>{{ confidence.rejection_source }}</dd></div>
+          </dl>
+          <p class="caution">{{ confidence.warning }}</p>
+        </details>
+
+        <details><summary>Trazabilidad del ranking</summary>
+          <dl class="profile-list">
+            <div><dt>Pares evaluados</dt><dd>{{ result.decision_trace.total_offer_channel_pairs }}</dd></div>
+            <div><dt>Pares elegibles</dt><dd>{{ result.decision_trace.eligible_offer_channel_pairs }}</dd></div>
+            <div><dt>Pares bloqueados</dt><dd>{{ result.decision_trace.blocked_offer_channel_pairs }}</dd></div>
+            <div><dt>Separación Top 1–Top 2</dt><dd>{{ result.decision_trace.top1_top2_score_gap }}</dd></div>
+            <div><dt>Selección de canal</dt><dd>{{ result.decision_trace.channel_selection_reason }}</dd></div>
+          </dl>
+          <p>{{ result.decision_trace.selection_reason }}</p>
+          <pre>{{ {'bloqueos': result.decision_trace.blocked_by_reason, 'componentes_top': result.decision_trace.top_score_breakdown}|tojson(indent=2) }}</pre>
+        </details>
+
+        <details><summary>Versiones, estado y auditoría</summary>
+          <dl class="profile-list">
+            <div><dt>ID de decisión</dt><dd>{{ result.decision_id }}</dd></div>
+            <div><dt>Esquema</dt><dd>{{ result.decision_schema_version }}</dd></div>
+            <div><dt>Motor</dt><dd>{{ result.versions.model_version }}</dd></div>
+            <div><dt>Versión de estado</dt><dd>{{ result.state_version }}</dd></div>
+            <div><dt>Estado calculado en</dt><dd>{{ result.state_as_of|default('—', true) }}</dd></div>
+            <div><dt>Ofertas activas (IDs)</dt><dd>{{ state.active_offer_ids|join(', ') or 'Ninguna' }}</dd></div>
+          </dl>
+          <pre>{{ {'versions': result.versions, 'eventos_estado': result.applied_state_event_ids, 'experimento_playbook': result.playbook_experiment}|tojson(indent=2) }}</pre>
+        </details>
+      </section>
+    </div>
+  </div>
+
+  <aside class="side-column" aria-label="Resumen del cliente y registro">
+    <section>
+      <p class="eyebrow">Antes de conversar</p>
+      <h2>Resumen del cliente</h2>
+      <p class="section-intro">Lo esencial para entender su situación actual.</p>
+      <div class="pill-row services-list">{% for service in service_summary(customer, state) %}<span class="pill">{{ service }}</span>{% endfor %}</div>
+      <dl class="profile-list plain-profile">
+        <div><dt>Relación actual</dt><dd>{{ attrs.get('tipo_cliente', customer.tipo_cliente)|capitalize }}</dd></div>
+        <div><dt>Plan actual</dt><dd>{{ attrs.get('plan_actual_id', customer.plan_actual_id) }}</dd></div>
+        <div><dt>Pago mensual promedio</dt><dd>{{ attrs.get('monto_facturado_prom', customer.monto_facturado_prom)|money }}</dd></div>
+        <div><dt>Uso de datos</dt><dd>{{ '%.1f GB'|format(attrs.get('consumo_datos_gb_prom', customer.consumo_datos_gb_prom)|float) }}</dd></div>
+        <div><dt>Canal que prefiere</dt><dd>{{ attrs.get('canal_mas_usado', customer.canal_mas_usado) }}</dd></div>
+      </dl>
+
+      <div class="customer-alerts" aria-label="Alertas del cliente">
+        {% set complaints = attrs.get('n_reclamos', customer.n_reclamos)|int %}
+        {% set overdue = attrs.get('meses_moroso', customer.meses_moroso)|int %}
+        {% if complaints == 0 and overdue == 0 %}
+        <p class="status-note success">Sin reclamos ni mora registrados.</p>
+        {% else %}
+          {% if complaints > 0 %}<p class="caution"><strong>Atención:</strong> {{ complaints }} reclamo{{ 's' if complaints != 1 else '' }} registrado{{ 's' if complaints != 1 else '' }}.</p>{% endif %}
+          {% if overdue > 0 %}<p class="caution"><strong>Atención:</strong> {{ overdue }} mes{{ 'es' if overdue != 1 else '' }} con mora.</p>{% endif %}
+        {% endif %}
+      </div>
+
+      <details><summary>Ver ficha completa del cliente</summary>
+        <dl class="profile-list compact">{% for key, value in attrs.items() if key != 'cliente_id' %}<div><dt>{{ key|replace('_', ' ')|capitalize }}</dt><dd>{{ value }}</dd></div>{% endfor %}</dl>
+      </details>
+    </section>
+
+    <section class="operation-panel">
+      <p class="eyebrow">Seguimiento</p>
+      <h2>Resultado de la conversación</h2>
+      {% if not contacted %}
+      <p class="section-intro">Primero confirma que comenzaste a conversar con el cliente.</p>
+      <form hx-post="{{ url_for('advisor.contact', decision_id=result.decision_id) }}" hx-target="#workspace" hx-swap="innerHTML" hx-disabled-elt="find button">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="button secondary full" type="submit">Ya inicié el contacto</button>
+      </form>
+      {% else %}<p class="status-note success">Contacto iniciado. Ya puedes guardar el resultado.</p>{% endif %}
+
+      {% if not feedback %}
+      <form class="feedback-form" data-feedback-form hx-post="{{ url_for('advisor.feedback', decision_id=result.decision_id) }}" hx-target="#workspace" hx-swap="innerHTML" hx-disabled-elt="find button">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <fieldset><legend>¿Qué ocurrió?</legend>
+          <label><input type="radio" name="resultado_final" value="aceptada" required> Aceptó la oferta</label>
+          <label><input type="radio" name="resultado_final" value="rechazada"> Rechazó la oferta</label>
+          <label><input type="radio" name="resultado_final" value="no_contactado"> No respondió</label>
+        </fieldset>
+        <div data-rejection-fields hidden><label for="reason-{{ result.decision_id }}">¿Por qué la rechazó?</label>
+          <select id="reason-{{ result.decision_id }}" name="motivo_rechazo" disabled>
+            <option value="precio">El precio es alto</option><option value="no_necesita">No lo necesita</option>
+            <option value="ya_tiene_similar">Ya tiene algo similar</option><option value="mal_momento">No es un buen momento</option>
+            <option value="no_confia">Necesita más confianza</option><option value="otro">Otro motivo</option>
+          </select></div>
+        <label for="proof-{{ result.decision_id }}">¿Cómo quedó registrado?</label>
+        <select id="proof-{{ result.decision_id }}" name="medio_probatorio">
+          <option value="registro_plataforma">Registro en plataforma</option><option value="chat_log">Conversación por chat</option><option value="audio_llamada">Audio de llamada</option>
+        </select>
+        <label data-rebate-toggle><input type="checkbox" name="rebate_usado" value="true"> Ofrecí una alternativa</label>
+        <fieldset data-rebate-fields hidden disabled><legend>¿Aceptó la alternativa?</legend>
+          <label><input type="radio" name="resultado_rebate" value="aceptada"> Sí, la aceptó</label>
+          <label><input type="radio" name="resultado_rebate" value="rechazada"> No, la rechazó</label>
+        </fieldset>
+        <button class="button primary full" type="submit">Guardar resultado</button>
+      </form>
+      {% elif accepted %}
+      <div class="status-note success"><strong>Aceptación registrada.</strong> El producto todavía no está activo.</div>
+      <form hx-post="{{ url_for('advisor.activation', decision_id=result.decision_id) }}" hx-target="#workspace" hx-swap="innerHTML" hx-disabled-elt="find button">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="evidence-{{ result.decision_id }}">Código de orden o constancia</label>
+        <input id="evidence-{{ result.decision_id }}" name="evidence_reference" maxlength="500" placeholder="Ej. ORDER-2026-001" required>
+        <button class="button primary full" type="submit">Confirmar que ya fue activado</button>
+      </form>
+      {% else %}
+      <div class="status-note success">Resultado guardado correctamente.</div>
+      {% if feedback.post_rejection_action %}<div class="next-contact-box">
+        <strong>Próximo intento recomendado</strong>
+        <p>{{ feedback.post_rejection_action.objective|replace('_', ' ')|capitalize }}</p>
+        <dl class="profile-list">
+          <div><dt>Volver a contactar desde</dt><dd>{{ feedback.post_rejection_action.recontact_from }}</dd></div>
+          <div><dt>Usar el canal</dt><dd>{{ feedback.post_rejection_action.channel }}</dd></div>
+          {% if feedback.post_rejection_action.alternative_offer_name %}<div><dt>Probar con</dt><dd>{{ feedback.post_rejection_action.alternative_offer_name }}</dd></div>{% endif %}
+        </dl>
+      </div>{% endif %}
+      <form hx-post="{{ url_for('advisor.recalculate', cliente_id=customer.cliente_id) }}" hx-target="#workspace" hx-swap="innerHTML" hx-disabled-elt="find button">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="button secondary full" type="submit">Calcular una nueva recomendación</button>
+      </form>
+      {% endif %}
+    </section>
+
+    <section>
+      <h2>Cambios recientes</h2>
+      <p class="section-intro">Activaciones u otros cambios registrados para este cliente.</p>
+      {% for event in context.events[-5:]|reverse %}
+      <div class="event-row"><strong>{{ event.event_type|event_label }}{% if event.oferta_id %} · {{ event.oferta_id }}{% endif %}</strong>
+        <small>{{ event.effective_at|string|truncate(16, true, '') }}</small>
+        <details class="event-detail"><summary>Datos de registro</summary><small>Estado v{{ event.state_version_after }} · Fuente: {{ event.source }}</small></details>
+      </div>
+      {% else %}<p class="muted">Todavía no hay cambios registrados.</p>{% endfor %}
+    </section>
+  </aside>
+</div>
+<footer>Las recomendaciones ayudan a orientar la conversación y deben complementarse con lo que el cliente exprese.</footer>

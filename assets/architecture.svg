@@ -5,6 +5,6 @@
   <g transform="translate(55 95)"><rect width="210" height="110" rx="10" class="b"/><text x="22" y="32" class="t">Datos maestros</text><text x="22" y="60" class="s">100k clientes · 22 ofertas</text><text x="22" y="84" class="s">300k interacciones</text></g>
   <path d="M265 150 H330" class="l"/><g transform="translate(330 95)"><rect width="230" height="110" rx="10" class="a"/><text x="22" y="32" class="t">Estado vigente</text><text x="22" y="60" class="s">Ledger append-only</text><text x="22" y="84" class="s">Feedback + productos</text></g>
   <path d="M560 150 H625" class="l"/><g transform="translate(625 95)"><rect width="230" height="110" rx="10" class="a"/><text x="22" y="32" class="t">Motor de decisión</text><text x="22" y="60" class="s">Elegibilidad + ranking</text><text x="22" y="84" class="s">Canal + oportunidad + guion</text></g>
-  <path d="M855 150 H920" class="l"/><g transform="translate(920 95)"><rect width="225" height="110" rx="10" class="b"/><text x="22" y="32" class="t">Experiencia</text><text x="22" y="60" class="s">Mesa del asesor</text><text x="22" y="84" class="s">Demo + impacto</text></g>
+  <path d="M855 150 H920" class="l"/><g transform="translate(920 95)"><rect width="225" height="110" rx="10" class="b"/><text x="22" y="32" class="t">Experiencia</text><text x="22" y="60" class="s">Flask + HTMX local</text><text x="22" y="84" class="s">Mesa del asesor</text></g>
   <path d="M1030 205 V310 H445 V210" class="l"/><text x="615" y="292" class="s">contacto · aceptación · activación · rechazo · evidencia</text>
 </svg>

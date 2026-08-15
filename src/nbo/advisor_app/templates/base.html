@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="htmx-config" content='{"historyEnabled":false,"historyCacheSize":0,"includeIndicatorStyles":false,"allowEval":false,"allowScriptTags":false}'>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}Mesa del asesor NBO{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/icon_nbo_ui.ico') }}" sizes="any">
+  <script src="{{ url_for('static', filename='js/theme-init.js') }}"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/advisor.css') }}">
+  <script defer src="{{ url_for('static', filename='vendor/htmx.min.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/advisor.js') }}"></script>
+</head>
+<body hx-history="false">
+  <a class="skip-link" href="#main-content">Saltar al contenido</a>
+  {% block body %}{% endblock %}
+</body>
+</html>
