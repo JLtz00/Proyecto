@@ -14,4 +14,12 @@ El script inicia la aplicación en un puerto loopback efímero y captura un nave
 3. `advisor-rejection.png`: rechazo por precio y acción de recuperación.
 4. `advisor-activation.png`: aceptación, activación con evidencia y nueva NBO.
 
-La base temporal y el perfil del navegador se eliminan al finalizar.
+El mismo comando genera además cinco respaldos del Modo Jurado:
+
+1. `jury-start.png`: estado y recomendación iniciales.
+2. `jury-acceptance.png`: aceptación sin cambio de cartera.
+3. `jury-activation.png`: activación, nueva versión de estado y nueva NBO.
+4. `jury-rejection.png`: rechazo por precio y cooldown.
+5. `jury-evidence.png`: evidencia real separada de simulación y futuro.
+
+La base temporal y el perfil del navegador se eliminan al finalizar. Ninguna captura modifica `artifacts/nbo.sqlite3`.

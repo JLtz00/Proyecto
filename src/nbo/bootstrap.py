@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from .config import load_config
+from .config import ROOT
 from .data import CATALOG_FILE, CUSTOMER_FILE, HISTORY_FILE
 from .engine import ArtifactUnavailable, NBOEngine
 
@@ -16,6 +17,18 @@ REQUIRED_ARTIFACTS = (
     "contact.joblib", "acceptance.joblib", "rejection.joblib", "metadata.json",
     "feature_schema.json",
 )
+
+
+def _json_version(path: Path, *, nested: bool = False) -> str | None:
+    if not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if nested:
+        return payload.get("versions", {}).get("model_version")
+    return payload.get("model_version") or payload.get("version")
 
 
 def canonical_text_sha256(path: Path) -> str:
@@ -60,6 +73,25 @@ def check_environment(config_path: str | None = None) -> dict:
             name: (artifact_dir / name).exists() for name in REQUIRED_ARTIFACTS
         }
 
+    configured_version = str(config["project"].get("model_version", ""))
+    evidence_paths = {
+        "manifest": manifest_path,
+        "metadata": artifact_dir / "metadata.json" if artifact_dir else artifact_root / "missing-metadata.json",
+        "audit": artifact_dir / "audit.json" if artifact_dir else artifact_root / "missing-audit.json",
+        "evaluation_v2": artifact_root / "evaluation_v2.json",
+        "evaluation_v3": ROOT / "reports" / "evaluation_v3.json",
+        "batch_100k": artifact_root / "recomendaciones.report.json",
+        "numeric_documentation": ROOT / "docs" / "evidence_manifest.json",
+    }
+    nested_versions = {"metadata"}
+    evidence_versions = {
+        name: _json_version(path, nested=name in nested_versions)
+        for name, path in evidence_paths.items()
+    }
+    evidence_consistent = bool(configured_version) and all(
+        version == configured_version for version in evidence_versions.values()
+    )
+
     report = {
         "python": sys.version.split()[0],
         "data": data_files,
@@ -68,8 +100,11 @@ def check_environment(config_path: str | None = None) -> dict:
         "manifest_portable": bool(manifest and not Path(manifest["path"]).is_absolute()),
         "artifact_dir": str(artifact_dir) if artifact_dir else None,
         "artifacts": artifact_files,
+        "configured_model_version": configured_version,
+        "evidence_versions": evidence_versions,
+        "evidence_consistent": evidence_consistent,
         "ready": all(data_files.values()) and all(item["matches"] for item in data_hashes.values())
-        and bool(artifact_files) and all(artifact_files.values()),
+        and bool(artifact_files) and all(artifact_files.values()) and evidence_consistent,
         "reference_cases": [],
     }
     if report["ready"]:

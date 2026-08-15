@@ -1,0 +1,22 @@
+{
+  "model_version": "nbo_v2_1",
+  "status": "generated_evidence_only",
+  "numeric_sources": {
+    "predictive_models": "artifacts/nbo_v2_1/metadata.json",
+    "ranking_v2": "artifacts/evaluation_v2.json",
+    "ranking_v3": "reports/evaluation_v3.json",
+    "batch_100k": "artifacts/recomendaciones.report.json",
+    "audit": "artifacts/nbo_v2_1/audit.json",
+    "tests": "reports/verification.json"
+  },
+  "labels": {
+    "real": "Evidencia del MVP",
+    "simulated": "Simulacion, no ventas reales",
+    "future": "Arquitectura futura"
+  },
+  "prohibited_claims": [
+    "uplift sin grupo control",
+    "ventas reales a partir de simulaciones",
+    "preparacion productiva"
+  ]
+}

@@ -12,18 +12,18 @@ Mostrar brevemente la arquitectura y abrir la demo guiada.
 
 ## 1:10–2:25 · La demo
 
-1. `CLI000001` tiene móvil, pero le falta internet hogar: recomienda `OF005`.
-2. La aceptación registra intención; los productos no cambian todavía.
-3. La activación con evidencia cambia el estado a elegible MT y recalcula `OF022`.
-4. Ante rechazo por precio, `OF022` entra en cooldown.
-5. El sistema conserva la ruta estratégica con Movistar Total Básico y una fecha de recontacto.
+1. Abrir el caso `CLI000001`: el motor obtiene dinámicamente la necesidad, oferta y canal.
+2. Registrar la aceptación y señalar que los productos y la versión de estado todavía no cambian.
+3. Confirmar la activación con evidencia: el estado avanza y el motor calcula una nueva NBO.
+4. Registrar un rechazo por precio sobre esa nueva recomendación: aparece cooldown y fecha de recontacto.
+5. Recalcular y mostrar cómo se reordenan las ofertas elegibles sin fijar IDs en el guion.
 
 Frase clave: “La recomendación no termina cuando el asesor la ve; evoluciona con el resultado real.”
 
 ## 2:25–2:50 · Evidencia
 
-“Evaluamos sin fuga temporal y con clientes separados. El ranking mejora 7.24% en NDCG@3 frente al mejor baseline v2. Los modelos complejos no superaron los gates predictivos, así que el sistema activó un fallback calibrado. Preferimos una decisión honesta y auditable a una IA compleja sin evidencia.”
+”Evaluamos sin fuga temporal, con clientes separados y cobertura explícita. Esta pantalla lee los resultados de la versión activa: AUC/Brier, ranking, cobertura, diversidad, batch de 100 mil y latencia. Contacto discrimina poco y aceptación aporta señal moderada; por eso mostramos el modelo que realmente ganó cada gate.”
 
 ## 2:50–3:00 · Cierre
 
-“No afirmamos ventas causales con datos simulados. Dejamos listo el funnel, la experimentación y el feedback para medirlas en un piloto. Convertimos una campaña en un sistema de decisión que aprende operacionalmente.”
+”No afirmamos uplift ni ventas causales con la simulación. Proponemos un piloto de 4–6 semanas con grupo control para medir adopción, activación, uplift, experiencia y valor económico. Hoy entregamos un copiloto auditable; no una automatización productiva.”

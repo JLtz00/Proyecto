@@ -47,6 +47,8 @@ where = ["src"]
 "nbo.advisor_app" = [
   "templates/*.html",
   "templates/partials/*.html",
+  "templates/jury/*.html",
+  "templates/jury/partials/*.html",
   "static/css/*.css",
   "static/js/*.js",
   "static/*.svg",

@@ -1,0 +1,167 @@
+<div id="jury-dashboard">
+  {% if toast %}<div class="toast jury-toast" role="status" tabindex="-1" data-toast data-focus-message>{{ toast }}</div>{% endif %}
+  {% if flow_error %}<div class="jury-alert" role="alert"><strong>Secuencia protegida.</strong> {{ flow_error }}</div>{% endif %}
+
+  <section class="jury-hero" aria-labelledby="jury-title">
+    <div>
+      <p class="eyebrow">Demostración guiada · 3 minutos</p>
+      <h1 id="jury-title">La recomendación cambia cuando cambia la realidad.</h1>
+      <p>Un copiloto para piloto asistido: decide, registra el resultado y vuelve a decidir. No se presenta como automatización productiva.</p>
+    </div>
+    <form hx-post="{{ url_for('jury.reset') }}" hx-target="#jury-dashboard" hx-swap="outerHTML" hx-disabled-elt="find button">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="jury-button secondary" type="submit">Reiniciar demo</button>
+    </form>
+  </section>
+
+  <nav class="jury-progress" aria-label="Progreso del caso principal">
+    {% set labels = ['Listo', 'NBO inicial', 'Aceptación', 'Activación', 'Rechazo', 'Nueva NBO'] %}
+    {% for item in phases %}
+    <span class="{{ 'done' if loop.index0 < phase_index else 'current' if loop.index0 == phase_index else '' }}"{% if loop.index0 == phase_index %} aria-current="step"{% endif %}>
+      <b>{{ loop.index }}</b>{{ labels[loop.index0] }}
+    </span>
+    {% endfor %}
+  </nav>
+
+  <section class="jury-section problem" aria-labelledby="problem-title">
+    <div><p class="eyebrow">1 · Problema</p><h2 id="problem-title">Una campaña estática pierde el contexto.</h2></div>
+    <ul>
+      <li>Puede repetir ofertas ya adquiridas.</li>
+      <li>No reacciona a una activación.</li>
+      <li>Puede insistir después de un rechazo.</li>
+    </ul>
+  </section>
+
+  <section class="jury-section demo-stage" aria-labelledby="case-title">
+    <div class="jury-heading">
+      <div><p class="eyebrow">2 · Caso principal</p><h2 id="case-title">{{ 'CLI000001' }}</h2></div>
+      <span class="evidence-tag real">Motor real · base temporal</span>
+    </div>
+
+    {% if phase == 'ready' %}
+    <div class="jury-empty">
+      <h3>Recorrido closed-loop listo</h3>
+      <p>El motor elegirá oferta y canal dinámicamente. El guion no depende de IDs de oferta.</p>
+    </div>
+    {% endif %}
+
+    {% if journey.initial %}
+      {% set initial = journey.initial %}
+      <div class="jury-story-grid">
+        <article class="jury-story-card">
+          <span class="story-number">1</span><p class="eyebrow">Estado inicial</p>
+          <h3>{{ initial.result.cliente.etapa_mt|stage_label }}</h3>
+          <p>Productos activos: <strong>{{ initial.state.active_offer_ids|join(', ') or 'ninguno' }}</strong></p>
+          <small>Versión de estado {{ initial.state.state_version }}</small>
+        </article>
+        <article class="jury-story-card highlight">
+          <span class="story-number">2</span><p class="eyebrow">Siguiente mejor oferta</p>
+          <h3>{{ initial.result.recommendation.nombre_oferta }}</h3>
+          <p>{{ initial.result.recommendation.explanation.positive|first }}</p>
+          <dl><div><dt>Canal</dt><dd>{{ initial.result.recommendation.canal }}</dd></div><div><dt>Interés</dt><dd>{{ initial.result.recommendation.probabilidad_aceptacion|percentage }}</dd></div></dl>
+        </article>
+        {% if journey.accepted %}
+        <article class="jury-story-card success">
+          <span class="story-number">3</span><p class="eyebrow">Aceptación</p>
+          <h3>Intención registrada</h3>
+          <p>Productos activos: <strong>{{ journey.accepted.state.active_offer_ids|join(', ') }}</strong></p>
+          <small>Sin activación: estado {{ journey.accepted.state.state_version }}. La cartera no cambió.</small>
+        </article>
+        {% endif %}
+        {% if journey.activated %}
+        <article class="jury-story-card success">
+          <span class="story-number">4</span><p class="eyebrow">Activación con evidencia</p>
+          <h3>{{ journey.activated.state.mt_stage|stage_label }}</h3>
+          <p>Nueva NBO: <strong>{{ journey.activated.result.recommendation.nombre_oferta }}</strong></p>
+          <small>Estado {{ journey.initial.state.state_version }} → {{ journey.activated.state.state_version }} · productos {{ journey.activated.state.active_offer_ids|join(', ') }}</small>
+        </article>
+        {% endif %}
+        {% if journey.rejected %}
+          {% set action = journey.rejected.interaction.feedback.post_rejection_action %}
+        <article class="jury-story-card caution-card">
+          <span class="story-number">5</span><p class="eyebrow">Rechazo observado</p>
+          <h3>Precio · cooldown {{ action.wait_days }} días</h3>
+          <p>{{ action.action|replace('_', ' ')|capitalize }}</p>
+          <small>Recontactar desde {{ action.recontact_from }} por {{ action.channel }}.</small>
+        </article>
+        {% endif %}
+        {% if journey.recalculated %}
+        <article class="jury-story-card highlight">
+          <span class="story-number">6</span><p class="eyebrow">Sistema adaptado</p>
+          <h3>{{ journey.recalculated.result.recommendation.nombre_oferta }}</h3>
+          <p>{{ journey.recalculated.result.recommendation.momento.momento|moment_label }} · {{ journey.recalculated.result.recommendation.momento.recommended_date }}</p>
+          <small>La oferta rechazada queda penalizada; el motor vuelve a ordenar candidatos elegibles.</small>
+        </article>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <div class="jury-actionbar">
+      {% if phase == 'ready' %}{% set endpoint = 'jury.start' %}{% set action_label = 'Iniciar caso y calcular NBO' %}
+      {% elif phase == 'started' %}{% set endpoint = 'jury.accept' %}{% set action_label = 'Registrar aceptación' %}
+      {% elif phase == 'accepted' %}{% set endpoint = 'jury.activate' %}{% set action_label = 'Confirmar activación con evidencia' %}
+      {% elif phase == 'activated' %}{% set endpoint = 'jury.reject' %}{% set action_label = 'Registrar rechazo por precio' %}
+      {% elif phase == 'rejected' %}{% set endpoint = 'jury.recalculate' %}{% set action_label = 'Recalcular siguiente NBO' %}
+      {% endif %}
+      {% if endpoint %}
+      <form hx-post="{{ url_for(endpoint) }}" hx-target="#jury-dashboard" hx-swap="outerHTML" hx-disabled-elt="find button">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="jury-button" type="submit">{{ action_label }}</button>
+      </form>
+      {% else %}<p class="status-note success"><strong>Historia completa.</strong> Puedes reiniciarla inmediatamente.</p>{% endif %}
+      <p>Identidades y versiones se resuelven en el servidor desde la decisión persistida.</p>
+    </div>
+  </section>
+
+  <section class="jury-section" aria-labelledby="profiles-title">
+    <div class="jury-heading"><div><p class="eyebrow">3 · Comparación</p><h2 id="profiles-title">Tres clientes, tres decisiones coherentes</h2></div><span class="evidence-tag real">Salida del motor</span></div>
+    <div class="profile-cards">
+      {% for profile in profiles %}
+      <article>
+        <p class="eyebrow">{{ profile.label }}</p><h3>{{ profile.cliente_id }}</h3>
+        <span class="pill stage">{{ profile.stage|stage_label }}</span>
+        <p><strong>{{ profile.offer.nombre_oferta }}</strong><br>{{ profile.offer.canal }} · {{ profile.offer.probabilidad_aceptacion|percentage }}</p>
+        {% if profile.label == 'Ya posee MT' %}<small>{{ 'Error: adquisición MT duplicada' if profile.duplicate_mt_acquisition else 'Guardrail activo: no duplica la adquisición MT.' }}</small>{% endif %}
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="jury-section evidence-panel" aria-labelledby="evidence-title">
+    <div class="jury-heading"><div><p class="eyebrow">4 · Evidencia del MVP</p><h2 id="evidence-title">Métricas leídas de artefactos versionados</h2></div><span class="evidence-tag real">Evidencia real · {{ evidence.model_version }}</span></div>
+    {% if evidence.consistent %}
+    <div class="evidence-metrics">
+      <div><span>Cobertura v3</span><strong>{{ evidence.ranking.v3.coverage.rate|percentage }}</strong><small>{{ evidence.ranking.v3.coverage.evaluable_events }} eventos evaluables</small></div>
+      <div><span>NDCG@3 absoluto</span><strong>{{ '%.3f'|format(evidence.ranking.v3.ranking_all_accepted_events.ndcg_at_3) }}</strong><small>Incluye no evaluables como fallos</small></div>
+      <div><span>Clientes batch</span><strong>{{ evidence.batch.processed }}</strong><small>{{ evidence.batch.coverage|percentage }} cobertura</small></div>
+      <div><span>Latencia batch p95</span><strong>{{ '%.2f ms'|format(evidence.batch.latency_ms.p95) }}</strong><small>{{ evidence.batch.distribution.top1_unique_offers }} ofertas Top 1</small></div>
+      <div><span>AUC contacto</span><strong>{{ '%.3f'|format(evidence.predictive.contact.roc_auc) }}</strong><small>Brier {{ '%.3f'|format(evidence.predictive.contact.brier) }}</small></div>
+      <div><span>AUC aceptación</span><strong>{{ '%.3f'|format(evidence.predictive.acceptance.roc_auc) }}</strong><small>Brier {{ '%.3f'|format(evidence.predictive.acceptance.brier) }}</small></div>
+      {% if evidence.verification %}<div><span>Pruebas</span><strong>{{ evidence.verification.tests_passed }}</strong><small>Suite completa aprobada</small></div>{% endif %}
+    </div>
+    {% else %}<div class="jury-alert">La evidencia compatible no está completa; no se muestran métricas antiguas.</div>{% endif %}
+    <div class="evidence-footer">
+      <div><h3>Modelos seleccionados</h3><p>Contacto: {{ evidence.selected_models.contact }} · Aceptación: {{ evidence.selected_models.acceptance }} · Rechazo: {{ evidence.selected_models.rejection }}</p></div>
+      <ul>{% for limitation in evidence.limitations %}<li>{{ limitation }}</li>{% endfor %}</ul>
+    </div>
+    {% if evidence.blocked_reports %}<details><summary>Reportes bloqueados por versión</summary><ul>{% for item in evidence.blocked_reports %}<li>{{ item.report }}: {{ item.reason }}</li>{% endfor %}</ul></details>{% endif %}
+  </section>
+
+  <section class="jury-section simulation-panel" aria-labelledby="simulation-title">
+    <div class="jury-heading"><div><p class="eyebrow">Escenario ilustrativo</p><h2 id="simulation-title">Funnel y economía para formular un piloto</h2></div><span class="evidence-tag simulated">Simulación · no ventas reales</span></div>
+    <p class="formula">{{ economics.formula }}</p>
+    <p>Supuestos visibles: margen {{ economics.assumptions.margin_rate|percentage }}, {{ economics.assumptions.expected_months }} meses, uso de rebate {{ economics.assumptions.expected_rebate_use_rate|percentage }}, costo de rebate S/ {{ economics.assumptions.rebate_cost }}.</p>
+    <small>{{ economics.disclaimer }}</small>
+  </section>
+
+  <section class="jury-section potential-panel" aria-labelledby="potential-title">
+    <div class="jury-heading"><div><p class="eyebrow">5 · Potencial comercial</p><h2 id="potential-title">De copiloto local a piloto medible</h2></div><span class="evidence-tag future">Arquitectura futura</span></div>
+    <div class="future-flow" aria-label="Componentes futuros">
+      <span>CRM / Customer 360</span><span>Consentimiento y preferencias</span><span>Catálogo, cobertura e inventario</span><span>Órdenes</span><span>Observabilidad</span>
+    </div>
+    <div class="pilot-design">
+      <h3>Piloto controlado · 4–6 semanas</h3>
+      <p>Grupo tratamiento con copiloto vs. grupo control con proceso vigente. Medir adopción, contacto, aceptación, activación, uplift, tiempo de gestión, reclamos, cancelación y valor económico.</p>
+    </div>
+  </section>
+</div>

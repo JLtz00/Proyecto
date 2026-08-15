@@ -3322,7 +3322,7 @@ La inferencia operacional reconstruye el estado como perfil maestro más un ledg
 
 Eventos admitidos: `product_activated`, `product_cancelled`, `usage_updated`, `billing_updated`, `preferred_channel_changed`, `mt_eligibility_overridden` y `customer_attribute_corrected`. La aceptación solo registra intención. La activación exige evidencia y, cuando incluye `decision_id`, valida cliente, candidato y aceptación previa.
 
-La recomendación normal usa el estado vigente y persiste `state_version`, snapshot mínimo e IDs de eventos aplicados bajo `decision_v4` y `rules_v5`. La evaluación histórica y `recommend_as_of` usan exclusivamente el perfil maestro y el histórico del dataset. La adaptación inmediata actualiza soporte jerárquico, fatiga y cooldown sin reentrenar ni modificar `nbo_v2`.
+La recomendación normal usa el estado vigente y persiste `state_version`, snapshot mínimo e IDs de eventos aplicados bajo `decision_v4` y `rules_v5`. La evaluación histórica y `recommend_as_of` usan exclusivamente el perfil maestro y el histórico del dataset. La adaptación inmediata actualiza soporte, fatiga y cooldown sin reentrenar ni modificar `nbo_v2_1`.
 
 Endpoints públicos:
 

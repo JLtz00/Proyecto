@@ -21,11 +21,12 @@ def test_pretrained_manifest_is_portable_and_reference_cases_work():
 
 
 def test_engine_resolves_relative_manifest_from_custom_artifact_root(tmp_path):
-    source = Path("artifacts/nbo_v2").resolve()
+    version = "nbo_v2_1"
+    source = (Path("artifacts") / version).resolve()
     artifact_root = tmp_path / "artifacts"
     artifact_root.mkdir()
     (artifact_root / "current.json").write_text(
-        json.dumps({"version": "nbo_v2", "path": str(source)}), encoding="utf-8",
+        json.dumps({"version": version, "path": str(source)}), encoding="utf-8",
     )
     config = yaml.safe_load(Path("config/default.yaml").read_text(encoding="utf-8"))
     config["project"]["data_dir"] = str(Path("dataset").resolve())
@@ -34,7 +35,7 @@ def test_engine_resolves_relative_manifest_from_custom_artifact_root(tmp_path):
     config_path = tmp_path / "config.yaml"
     config_path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
     engine = NBOEngine(str(config_path), persist=False)
-    assert engine.versions["model_version"] == "nbo_v2"
+    assert engine.versions["model_version"] == version
 
 
 def test_dataset_checksum_is_stable_between_lf_and_crlf(tmp_path):
@@ -47,3 +48,17 @@ def test_dataset_checksum_is_stable_between_lf_and_crlf(tmp_path):
     changed = tmp_path / "changed.csv"
     changed.write_bytes(b"id,value\n1,alpha\n2,gamma\n")
     assert canonical_text_sha256(lf) != canonical_text_sha256(changed)
+
+
+def test_bootstrap_blocks_mixed_evidence_versions(tmp_path):
+    config = yaml.safe_load(Path("config/default.yaml").read_text(encoding="utf-8"))
+    config["project"]["model_version"] = "stale_model"
+    config["project"]["data_dir"] = str(Path("dataset").resolve())
+    config["project"]["artifact_dir"] = str(Path("artifacts").resolve())
+    config["project"]["database_path"] = str(tmp_path / "unused.sqlite3")
+    config_path = tmp_path / "mixed.yaml"
+    config_path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
+    report = check_environment(str(config_path))
+    assert report["ready"] is False
+    assert report["evidence_consistent"] is False
+    assert set(report["evidence_versions"].values()) != {"stale_model"}

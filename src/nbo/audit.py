@@ -54,6 +54,8 @@ def audit(config_path: str | None = None) -> Path:
     artifact_root = Path(config["project"]["artifact_dir"])
     manifest = json.loads((artifact_root / "current.json").read_text(encoding="utf-8"))
     version_dir = Path(manifest["path"])
+    if not version_dir.is_absolute():
+        version_dir = (artifact_root / version_dir).resolve()
     metadata = json.loads((version_dir / "metadata.json").read_text(encoding="utf-8"))
     split_manifest = load_split_manifest(version_dir / "split_manifest.json")
     customers, catalog, history = load_raw(config["project"]["data_dir"])

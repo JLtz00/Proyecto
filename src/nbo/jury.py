@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
+
+from .config import ROOT
 
 
 DEMO_FUNNEL = {
@@ -113,3 +117,75 @@ def executive_report(raw: dict[str, Any], source: str) -> dict[str, Any]:
         "end_to_end_rate": rate("activated", "classified"),
     }
     return metrics
+
+
+def _read_versioned_json(
+    path: Path, active_version: str, blocked: list[dict[str, str]], *, nested: bool = False,
+) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        blocked.append({"report": path.name, "reason": f"reporte ilegible: {exc}"})
+        return None
+    version = (
+        payload.get("versions", {}).get("model_version") if nested
+        else payload.get("model_version")
+    )
+    if version != active_version:
+        blocked.append({
+            "report": path.name,
+            "reason": f"version {version or 'ausente'}; motor activo {active_version}",
+        })
+        return None
+    return payload
+
+
+def load_mvp_evidence(engine: Any) -> dict[str, Any]:
+    """Carga solo evidencia real cuya version coincide con el motor activo."""
+    active = str(engine.versions["model_version"])
+    blocked: list[dict[str, str]] = []
+    metadata = _read_versioned_json(
+        engine.artifact_dir / "metadata.json", active, blocked, nested=True,
+    )
+    audit = _read_versioned_json(engine.artifact_dir / "audit.json", active, blocked)
+    evaluation_v2 = _read_versioned_json(
+        Path(engine.config["project"]["artifact_dir"]) / "evaluation_v2.json", active, blocked,
+    )
+    evaluation_v3 = _read_versioned_json(ROOT / "reports" / "evaluation_v3.json", active, blocked)
+    batch = _read_versioned_json(
+        Path(engine.config["project"]["artifact_dir"]) / "recomendaciones.report.json",
+        active,
+        blocked,
+    )
+    verification = _read_versioned_json(ROOT / "reports" / "verification.json", active, blocked)
+
+    selected_models: dict[str, str] = {}
+    predictive: dict[str, Any] = {}
+    if metadata:
+        group = metadata.get("metrics", {}).get("group_split", {})
+        for target in ("contact", "acceptance", "rejection"):
+            values = group.get(target, {})
+            selected_models[target] = values.get("selected_kind", "no reportado")
+            predictive[target] = values.get("test", {})
+
+    return {
+        "model_version": active,
+        "consistent": all((metadata, audit, evaluation_v2, evaluation_v3, batch)) and not blocked,
+        "blocked_reports": blocked,
+        "selected_models": selected_models,
+        "predictive": predictive,
+        "ranking": {
+            "v2": evaluation_v2,
+            "v3": evaluation_v3,
+        },
+        "batch": batch,
+        "audit": audit,
+        "verification": verification,
+        "limitations": [
+            "Contacto tiene poca capacidad discriminativa en el historico disponible.",
+            "Aceptacion aporta una senal moderada; no demuestra uplift causal.",
+            "Las metricas describen este dataset y no equivalen a ventas reales.",
+        ],
+    }

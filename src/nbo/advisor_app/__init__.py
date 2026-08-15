@@ -19,18 +19,29 @@ from ..engine import NBOEngine
 csrf = CSRFProtect()
 
 
-def create_app(config: dict[str, Any] | None = None, backend: Any | None = None) -> Flask:
+def create_app(
+    config: dict[str, Any] | None = None,
+    backend: Any | None = None,
+    jury_session: Any | None = None,
+) -> Flask:
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config.from_mapping(
         SECRET_KEY=secrets.token_hex(32),
         WTF_CSRF_TIME_LIMIT=None,
         ADVISOR_BACKEND=None,
         ADVISOR_STARTUP_ERROR=None,
+        JURY_MODE=False,
     )
     if config:
         app.config.update(config)
 
-    if backend is None:
+    if app.config["JURY_MODE"] and jury_session is None:
+        from ..jury_session import JurySession
+        jury_session = JurySession()
+    if jury_session is not None:
+        backend = jury_session.backend
+        app.extensions["jury_session"] = jury_session
+    elif backend is None:
         try:
             backend = LocalAdvisorApi(NBOEngine(persist=True))
         except Exception as exc:  # La pantalla y /health deben seguir disponibles.
@@ -40,6 +51,9 @@ def create_app(config: dict[str, Any] | None = None, backend: Any | None = None)
 
     from .routes import advisor
     app.register_blueprint(advisor)
+    if app.config["JURY_MODE"]:
+        from .jury_routes import jury
+        app.register_blueprint(jury)
 
     app.jinja_env.filters.update(
         money=money,
@@ -75,7 +89,7 @@ def create_app(config: dict[str, Any] | None = None, backend: Any | None = None)
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Cache-Control"] = "no-store"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-        if request.path.startswith("/ui/"):
+        if request.path.startswith(("/ui/", "/jury")):
             response.headers["Vary"] = "HX-Request"
         return response
 

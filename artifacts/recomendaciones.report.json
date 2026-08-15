@@ -1,0 +1,56 @@
+{
+  "model_version": "nbo_v2_1",
+  "requested": 100000,
+  "processed": 100000,
+  "coverage": 1.0,
+  "errors": [],
+  "duration_seconds": 461.3746779000003,
+  "latency_ms": {
+    "p50": 4.349354050000329,
+    "p95": 4.457120050000315
+  },
+  "distribution": {
+    "offers": {
+      "OF004": 31778,
+      "OF010": 19323,
+      "OF022": 12903,
+      "OF005": 12143,
+      "OF003": 9019,
+      "OF011": 6584,
+      "OF006": 3918,
+      "OF012": 2134,
+      "OF009": 819,
+      "OF021": 741,
+      "OF008": 342,
+      "OF002": 123,
+      "OF015": 103,
+      "OF019": 38,
+      "OF001": 21,
+      "OF020": 6,
+      "OF007": 3,
+      "OF014": 2
+    },
+    "top1_unique_offers": 18,
+    "catalog_coverage": 0.8181818181818182,
+    "max_offer_share": 0.31778,
+    "channels": {
+      "Tienda": 39661,
+      "Digital": 34735,
+      "Call In": 16007,
+      "Call Out": 9597
+    },
+    "mt_share": 0.1365,
+    "mean_acceptance_probability": 0.39170927099009384,
+    "mean_sale_probability": 0.3330764467089065,
+    "stage_mt": {
+      "falta_internet_hogar": 35014,
+      "no_elegible_actual": 24200,
+      "falta_movil_postpago": 19942,
+      "elegible_mt": 13650,
+      "ya_es_mt": 7194
+    },
+    "mt_capture_eligible": 1.0,
+    "route_home_completion_share": 0.9870908779345404,
+    "route_mobile_completion_share": 1.0
+  }
+}

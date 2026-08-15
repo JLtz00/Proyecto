@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Modo Jurado · NBO{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/jury.css') }}">{% endblock %}
+{% block body %}
+<header class="jury-topbar">
+  <a class="brand" href="{{ url_for('jury.index') }}" aria-label="Inicio del Modo Jurado">
+    <img class="brand-logo" src="{{ url_for('static', filename='img/Logo_nbo_ui.png') }}" alt="">
+    <span>Closed-Loop NBO <b>Modo Jurado</b></span>
+  </a>
+  <div class="jury-status"><span class="status-dot online"></span> Motor {{ health.model_version }} · demo local</div>
+</header>
+<main id="main-content" class="jury-shell">
+  {% include "jury/partials/dashboard.html" %}
+</main>
+{% endblock %}

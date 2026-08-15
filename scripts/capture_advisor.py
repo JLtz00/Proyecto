@@ -22,6 +22,7 @@ from nbo.advisor_app import create_app
 from nbo.advisor_local import LocalAdvisorApi
 from nbo.config import load_config
 from nbo.engine import NBOEngine
+from nbo.jury_session import JurySession
 
 
 def _rpc(ws, request_id: int, method: str, params: dict | None = None) -> dict:
@@ -97,6 +98,13 @@ ACTIONS = {
       document.querySelector('input[name="evidence_reference"]').value = 'ORDER-CAPTURE-001';
       document.querySelector('input[name="evidence_reference"]').form.requestSubmit();
     """,
+    "jury-reset": "document.querySelector('form[hx-post$=\"/scenario/reset\"]').requestSubmit();",
+    "jury-start": "document.querySelector('form[hx-post$=\"/scenario/start\"]').requestSubmit();",
+    "jury-accept": "document.querySelector('form[hx-post$=\"/scenario/accept\"]').requestSubmit();",
+    "jury-activate": "document.querySelector('form[hx-post$=\"/scenario/activate\"]').requestSubmit();",
+    "jury-reject": "document.querySelector('form[hx-post$=\"/scenario/reject\"]').requestSubmit();",
+    "jury-case": "document.querySelector('#case-title').scrollIntoView({block: 'start'});",
+    "jury-evidence": "document.querySelector('#evidence-title').scrollIntoView({block: 'start'});",
 }
 
 
@@ -157,7 +165,17 @@ def main() -> None:
         config_path = temp / "config.yaml"
         config_path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
         backend = LocalAdvisorApi(NBOEngine(str(config_path), persist=True))
-        app = create_app({"SECRET_KEY": "capture-only"}, backend)
+        jury_session = JurySession(
+            backend_factory=lambda path: LocalAdvisorApi(
+                NBOEngine(str(config_path), persist=True, database_path=path)
+            ),
+            temp_dir=temp,
+        )
+        app = create_app(
+            {"SECRET_KEY": "capture-only", "JURY_MODE": True},
+            backend,
+            jury_session=jury_session,
+        )
         port = _free_port()
         server = create_server(app, host="127.0.0.1", port=port, threads=2)
         thread = threading.Thread(target=server.run, daemon=True)
@@ -168,13 +186,36 @@ def main() -> None:
             capture(args.browser, base + "/?cliente_id=CLI000013", args.output_dir / "advisor-found.png", "Resultado de la conversación", [("light", "Resultado de la conversación")])
             capture(args.browser, base + "/?cliente_id=CLI000013", args.output_dir / "advisor-rejection.png", "Resultado de la conversación", [("reject", "Resultado registrado")])
             capture(args.browser, base + "/?cliente_id=CLI000001", args.output_dir / "advisor-activation.png", "Resultado de la conversación", [("accept", "todavía no está activo"), ("activate", "Producto activado")])
+            jury_url = base + "/jury"
+            capture(args.browser, jury_url, args.output_dir / "jury-start.png", "CASO PRINCIPAL", [
+                ("jury-reset", "Demostracion reiniciada"), ("jury-start", "Caso iniciado"),
+                ("jury-case", "CLI000001"),
+            ])
+            capture(args.browser, jury_url, args.output_dir / "jury-acceptance.png", "CASO PRINCIPAL", [
+                ("jury-reset", "Demostracion reiniciada"), ("jury-start", "Caso iniciado"),
+                ("jury-accept", "Aceptacion registrada"), ("jury-case", "CLI000001"),
+            ])
+            capture(args.browser, jury_url, args.output_dir / "jury-activation.png", "CASO PRINCIPAL", [
+                ("jury-reset", "Demostracion reiniciada"), ("jury-start", "Caso iniciado"),
+                ("jury-accept", "Aceptacion registrada"), ("jury-activate", "Activacion confirmada"),
+                ("jury-case", "CLI000001"),
+            ])
+            capture(args.browser, jury_url, args.output_dir / "jury-rejection.png", "CASO PRINCIPAL", [
+                ("jury-reset", "Demostracion reiniciada"), ("jury-start", "Caso iniciado"),
+                ("jury-accept", "Aceptacion registrada"), ("jury-activate", "Activacion confirmada"),
+                ("jury-reject", "Rechazo por precio registrado"), ("jury-case", "CLI000001"),
+            ])
+            capture(args.browser, jury_url, args.output_dir / "jury-evidence.png", "CASO PRINCIPAL", [
+                ("jury-reset", "Demostracion reiniciada"), ("jury-evidence", "EVIDENCIA DEL MVP"),
+            ])
         finally:
             server.close()
             server.task_dispatcher.shutdown()
             thread.join(timeout=10)
             if thread.is_alive():
                 raise RuntimeError("El servidor temporal no se detuvo correctamente")
-        del server, app, backend
+        jury_session.cleanup()
+        del server, app, backend, jury_session
         gc.collect()
         time.sleep(.5)
 
