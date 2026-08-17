@@ -3,7 +3,7 @@ from __future__ import annotations
 import secrets
 from typing import Any
 
-from flask import Flask, request
+from flask import Flask, abort, request
 from flask_wtf.csrf import CSRFProtect
 
 from ..advisor_local import LocalAdvisorApi
@@ -30,6 +30,7 @@ def create_app(
         WTF_CSRF_TIME_LIMIT=None,
         ADVISOR_BACKEND=None,
         ADVISOR_STARTUP_ERROR=None,
+        ADVISOR_READ_ONLY=False,
         JURY_MODE=False,
     )
     if config:
@@ -47,6 +48,12 @@ def create_app(
         except Exception as exc:  # La pantalla y /health deben seguir disponibles.
             app.config["ADVISOR_STARTUP_ERROR"] = str(exc)
     app.extensions["advisor_backend"] = backend
+
+    @app.before_request
+    def enforce_read_only_advisor():
+        if app.config["ADVISOR_READ_ONLY"] and request.method not in {"GET", "HEAD", "OPTIONS"}:
+            abort(405)
+
     csrf.init_app(app)
 
     from .routes import advisor

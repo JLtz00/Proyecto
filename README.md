@@ -49,6 +49,20 @@ Capturas reales: [estado vacío](assets/screenshots/advisor-empty.png), [cliente
 
 Respaldos del Modo Jurado: [inicio](assets/screenshots/jury-start.png), [aceptación](assets/screenshots/jury-acceptance.png), [activación](assets/screenshots/jury-activation.png), [rechazo](assets/screenshots/jury-rejection.png) y [evidencia](assets/screenshots/jury-evidence.png).
 
+### Publicación de consulta en Vercel
+
+El repositorio incluye una entrada WSGI en `app.py` y configuración en `vercel.json` para publicar exclusivamente la Mesa del Asesor. Esta variante:
+
+- registra solamente las rutas normales de la Mesa; `/jury` devuelve `404`;
+- permite buscar clientes y consultar recomendaciones, explicaciones y trazabilidad;
+- oculta y bloquea contacto, feedback, activación y recálculo;
+- escribe las decisiones técnicas en una SQLite temporal de `/tmp`, sin usar `artifacts/nbo.sqlite3`;
+- instala solo las dependencias de inferencia declaradas en `requirements-vercel.txt`.
+
+En Vercel, importa este repositorio, deja `.` como directorio raíz y selecciona el preset Flask. `vercel.json` contiene el resto de la configuración y `.python-version` fija Python 3.12 para ese entorno. Cada push a la rama conectada producirá un nuevo despliegue.
+
+Esta publicación es una demostración de consulta, no una mesa operacional multiusuario. La Mesa local conserva el flujo completo y su persistencia closed-loop.
+
 ## Motor y datos
 
 El motor usa los archivos maestros de `dataset/`:

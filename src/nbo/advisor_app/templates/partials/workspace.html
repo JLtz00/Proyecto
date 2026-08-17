@@ -247,6 +247,7 @@
       </details>
     </section>
 
+    {% if not config.ADVISOR_READ_ONLY %}
     <section class="operation-panel">
       <p class="eyebrow">Seguimiento</p>
       <h2>Resultado de la conversación</h2>
@@ -308,7 +309,9 @@
       </form>
       {% endif %}
     </section>
+    {% endif %}
 
+    {% if not config.ADVISOR_READ_ONLY %}
     <section>
       <h2>Cambios recientes</h2>
       <p class="section-intro">Activaciones u otros cambios registrados para este cliente.</p>
@@ -319,6 +322,7 @@
       </div>
       {% else %}<p class="muted">Todavía no hay cambios registrados.</p>{% endfor %}
     </section>
+    {% endif %}
   </aside>
 </div>
 <footer>Las recomendaciones ayudan a orientar la conversación y deben complementarse con lo que el cliente exprese.</footer>
