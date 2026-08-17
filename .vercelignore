@@ -7,6 +7,8 @@ build
 *.ipynb
 *.pdf
 requirements-dev.lock
+requirements.lock
+pyproject.toml
 clientes_limpio.csv
 catalogo_limpio.csv
 historial_limpio.csv
