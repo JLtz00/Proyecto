@@ -51,8 +51,15 @@ FEATURE_LABELS = {
 
 
 class NBOEngine:
-    def __init__(self, config_path: str | None = None, persist: bool = True):
+    def __init__(
+        self,
+        config_path: str | None = None,
+        persist: bool = True,
+        database_path: str | Path | None = None,
+    ):
         self.config = load_config(config_path)
+        if database_path is not None:
+            self.config["project"]["database_path"] = str(Path(database_path).resolve())
         customers, catalog, history = load_raw(self.config["project"]["data_dir"])
         report = validate_data(customers, catalog, history, self.config["validation"])
         report.raise_for_errors()
@@ -75,6 +82,17 @@ class NBOEngine:
         self.metadata = json.loads((artifact_dir / "metadata.json").read_text(encoding="utf-8"))
         self.artifact_dir = artifact_dir
         artifact_versions = self.metadata["versions"]
+        manifest_version = str(manifest.get("version", ""))
+        metadata_version = str(artifact_versions.get("model_version", ""))
+        configured_version = str(self.config["project"].get("model_version", ""))
+        if not manifest_version or manifest_version != metadata_version:
+            raise ArtifactUnavailable(
+                "El manifiesto activo y los metadatos del modelo pertenecen a versiones distintas."
+            )
+        if configured_version and configured_version != metadata_version:
+            raise ArtifactUnavailable(
+                f"La configuracion solicita {configured_version}, pero el artefacto activo es {metadata_version}."
+            )
         self.versions = {
             **artifact_versions,
             "rules_version": self.config["project"]["rules_version"],

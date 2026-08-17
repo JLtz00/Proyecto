@@ -135,6 +135,29 @@ def test_search_normalizes_and_renders_all_advisor_information(flask_app):
     assert full.status_code == 200 and "<!doctype html>" in full.text.lower()
 
 
+def test_read_only_advisor_keeps_search_and_hides_operational_controls(advisor_backend):
+    app = create_app(
+        {
+            "TESTING": True,
+            "ADVISOR_READ_ONLY": True,
+            "JURY_MODE": False,
+            "WTF_CSRF_ENABLED": False,
+        },
+        advisor_backend,
+    )
+    client = app.test_client()
+    response = client.get(
+        "/ui/clientes/CLI000001/workspace", headers={"HX-Request": "true"},
+    )
+
+    assert response.status_code == 200
+    assert "CLI000001" in response.text and "Recomendación principal" in response.text
+    assert "Resultado de la conversación" not in response.text
+    assert "Cambios recientes" not in response.text
+    assert client.get("/jury").status_code == 404
+    assert client.post("/ui/clientes/CLI000001/recalcular").status_code == 405
+
+
 def test_missing_customer_and_engine_failure_are_html_errors(flask_app):
     missing = flask_app.test_client().get(
         "/ui/clientes/NO-EXISTE/workspace", headers={"HX-Request": "true"},

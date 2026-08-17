@@ -1,7 +1,7 @@
 # Informe resumido del proyecto Next Best Offer
 
 **Fecha de corte:** 13 de agosto de 2026  
-**Versión activa:** `nbo_v2`  
+**Versión activa:** `nbo_v2_1`
 **Versiones asociadas:** `features_v2`, `rules_v5`, `playbook_v2`, `decision_v4`, `catalog_2026_08`
 **Estado general:** motor closed-loop funcional, entrenado con todos los datos, evaluado sin fuga temporal y preparado para la entrega técnica, la demostración adaptativa y el procesamiento masivo. Todavía no debe considerarse un sistema productivo validado en campo.
 
@@ -11,9 +11,9 @@
 - Reconstrucción de estado actual o a fecha de corte sin modificar los tres CSV maestros.
 - Aceptación separada de activación; la activación validada recalcula y persiste inmediatamente la nueva NBO.
 - Ofertas activas bloqueadas, derivación/override MT y adaptación de tasas, fatiga y cooldown desde feedback operacional deduplicado.
-- API `1.5.0`, `rules_v5` y `decision_v4`; `nbo_v2` permanece como champion sin reentrenamiento.
+- API `1.5.0`, `rules_v5` y `decision_v4`; artefactos, evaluaciones y batch se regeneran bajo `nbo_v2_1`.
 - Readiness conservador para challenger, sin entrenamiento ni promoción automáticos.
-- Demo reproducible `CLI000001`: `OF005` → aceptación → activación → elegible MT → `OF022` → rechazo por precio → tier MT inferior.
+- Modo Jurado reproducible para `CLI000001`: oferta obtenida dinámicamente → aceptación sin cambio de cartera → activación con evidencia → nueva NBO → rechazo por precio → cooldown → recálculo.
 
 ## 1. Objetivo
 
@@ -88,15 +88,15 @@ Los CSV limpios del EDA no se utilizan para entrenar porque contienen agregacion
 
 ## 4. Resultado real del entrenamiento
 
-La versión `nbo_v2` evaluó CatBoost frente a baselines y aplicó el criterio de fallback honesto. Ninguno de los tres modelos CatBoost demostró una mejora suficiente para ser activado.
+La versión `nbo_v2_1` evalúa CatBoost frente a baselines logísticos y jerárquicos y publica el ganador real de cada gate. Contactabilidad conserva poca capacidad discriminativa; aceptación aporta una señal moderada. La interfaz lee estos resultados del metadato activo y no fija la familia ganadora en el texto.
 
 | Tarea | Método activo | Resultado principal en test |
 |---|---|---|
 | Contactabilidad | Tasa jerárquica calibrada | ROC-AUC 0.4965; Brier 0.1309 |
-| Aceptación | Tasa jerárquica calibrada | ROC-AUC 0.5277; Brier 0.2343 |
+| Aceptación | Regresión logística | ROC-AUC 0.5948; Brier 0.2220 |
 | Motivo de rechazo | Prior jerárquico | Accuracy 34.95%; Top-2 54.85% |
 
-Esto significa que el motor no presenta CatBoost como superior cuando los datos no lo respaldan. Las probabilidades provienen de tasas suavizadas por historial y segmento, mientras que la personalización final se completa mediante reglas, ajuste cliente–oferta y ranking.
+Esto significa que el motor no presenta CatBoost como superior cuando los datos no lo respaldan. Cada probabilidad proviene del ganador real de su gate; la personalización final se completa mediante reglas, ajuste cliente–oferta y ranking.
 
 El suavizado bayesiano seleccionado en validación utiliza `alpha=50`.
 
@@ -106,19 +106,19 @@ La evaluación se realizó sobre el test reservado, utilizando para cada evento 
 
 | Métrica | Motor NBO | Mejor baseline |
 |---|---:|---:|
-| Hit@1 | 10.96% | 10.52% |
-| Hit@3 | 33.65% | 31.19% |
-| NDCG@3 | 0.2376 | 0.2216 |
+| Hit@1 | 11.04% | 10.52% |
+| Hit@3 | 33.42% | 31.19% |
+| NDCG@3 | 0.2370 | 0.2216 |
 
 Resultados adicionales:
 
 - Casos aceptados considerados: 9,077.
 - Casos elegibles evaluables: 7,444.
 - Cobertura de evaluación: 82.0%.
-- Mejora relativa de NDCG@3: **7.24%** frente al mejor baseline.
+- Mejora relativa de NDCG@3: **6.98%** frente al mejor baseline.
 - Gate final del ranking: **aprobado**.
-- Ofertas diferentes presentes como Top 1: 16.
-- Concentración máxima de una oferta en test: 27.2%.
+- Ofertas diferentes presentes como Top 1: 15.
+- Concentración máxima de una oferta en test: 30.0%.
 
 ### Evaluación v3 por evento
 
@@ -126,14 +126,14 @@ La auditoría competitiva añadió una evaluación por cada evento aceptado, int
 
 | Métrica | Evaluables | Todos los aceptados |
 |---|---:|---:|
-| Hit@1 | 12.30% | 10.19% |
-| Hit@3 | 36.56% | 30.30% |
-| NDCG@3 | 0.2596 | 0.2151 |
+| Hit@1 | 12.25% | 10.15% |
+| Hit@3 | 36.55% | 30.29% |
+| NDCG@3 | 0.2598 | 0.2153 |
 
 - 14,353 aceptaciones en test; 11,897 evaluables (`82.89%`).
-- IC 95% NDCG@3 condicionado: `[0.2514, 0.2670]`.
-- Mejora relativa NDCG@3 frente al mejor baseline con la misma unidad: `17.46%`.
-- 16 ofertas distintas como Top 1; concentración máxima `26.15%`.
+- IC 95% NDCG@3 condicionado: `[0.2519, 0.2678]`.
+- Mejora relativa NDCG@3 frente al mejor baseline con la misma unidad: `17.56%`.
+- 15 ofertas distintas como Top 1; concentración máxima `28.76%`.
 - Los ablations muestran que la prioridad MT sostiene Hit@3, mientras que el historial predictivo individual aporta poca separación en este dataset sintético.
 - La comparación y sus limitaciones están versionadas en `reports/evaluation_v3.json`.
 
@@ -155,13 +155,13 @@ La corrida masiva final produjo `artifacts/recomendaciones.csv` con estos result
 - Clientes procesados: 100,000.
 - Cobertura: 100%.
 - Errores: 0.
-- Duración: aproximadamente 163 segundos.
-- Latencia vectorizada p50: 1.46 ms por cliente.
-- Latencia vectorizada p95: 1.51 ms por cliente.
-- Cobertura del catálogo en Top 1: 15 de 22 ofertas.
-- Concentración máxima de una oferta: 30.4%.
+- Duración: aproximadamente 461 segundos.
+- Latencia vectorizada p50: 4.35 ms por cliente.
+- Latencia vectorizada p95: 4.46 ms por cliente.
+- Cobertura del catálogo en Top 1: 18 de 22 ofertas.
+- Concentración máxima de una oferta: 31.8%.
 
-La consulta individual enriquecida, incluyendo trace, confianza, playbook y persistencia, registró en la verificación final un p95 caliente cercano a 206 ms y un máximo observado de 233 ms.
+La consulta individual enriquecida y los cinco pasos calientes del Modo Jurado permanecen por debajo de un segundo en la suite automatizada.
 
 ## 8. Trazabilidad
 
@@ -186,7 +186,7 @@ Los eventos pueden almacenar canal, oferta, medio probatorio y referencia opcion
 
 ## 9. Calidad y pruebas
 
-La suite vigente contiene **50 pruebas automatizadas**, incluidas validaciones de demo, aislamiento público, evaluación v3, métricas ejecutivas, explicabilidad CatBoost y checksums portables entre Windows/Linux. Cubre:
+La suite vigente contiene **67 pruebas automatizadas**, incluidas ocho del Modo Jurado, aislamiento de SQLite, secuencia `409`, CLI, p95 caliente, CSRF/CSP/autoescape, coherencia de evidencia, evaluación v3, métricas ejecutivas, explicabilidad y checksums portables entre Windows/Linux. Cubre:
 
 - Contrato y calidad de datos.
 - Nulos semánticos y sentinel de datos ilimitados.
@@ -211,8 +211,8 @@ La API, la carga de artefactos, la recomendación Top 3 y su persistencia tambi�
 |---|---|
 | `src/nbo/` | Código del motor, entrenamiento, reglas, API y evaluación |
 | `config/default.yaml` | Semilla, versiones, gates, pesos y cooldowns |
-| `artifacts/nbo_v2/metadata.json` | Experimentos y métricas completas |
-| `artifacts/nbo_v2/MODEL_CARD.md` | Resumen técnico y limitaciones |
+| `artifacts/nbo_v2_1/metadata.json` | Experimentos y métricas completas |
+| `artifacts/nbo_v2_1/MODEL_CARD.md` | Resumen técnico y limitaciones |
 | `artifacts/evaluation_v2.json` | Evaluación final del ranking |
 | `artifacts/recomendaciones.csv` | Top 1 para los 100,000 clientes |
 | `artifacts/recomendaciones.report.json` | Rendimiento y distribución del batch |
@@ -221,7 +221,7 @@ La API, la carga de artefactos, la recomendación Top 3 y su persistencia tambi�
 ## 11. Limitaciones actuales
 
 - Los perfiles de clientes resumen seis meses y no son snapshots mensuales perfectos.
-- La información histórica tiene poca capacidad para predecir individualmente contacto, aceptación y rechazo; por eso se utilizan fallbacks jerárquicos.
+- La información histórica tiene poca capacidad para discriminar contacto y una capacidad moderada para aceptación; el gate selecciona el baseline o modelo que realmente generaliza mejor.
 - La evaluación observacional refleja la política comercial pasada y no demuestra causalidad o uplift.
 - El precio normalizado es solo un proxy de valor de negocio, porque no existe margen en el dataset.
 - No existe un target válido para churn ni para éxito de rebate.
@@ -260,6 +260,6 @@ No forman parte del MVP actual churn, uplift, clustering ni RAG. El LLM existe �
 
 El núcleo del proyecto está completo y operativo para la entrega técnica. El motor procesa todo el universo de clientes, respeta las reglas comerciales, supera los baselines de ranking, prioriza correctamente Movistar Total y su ruta previa, genera respuestas trazables y cumple el objetivo local de latencia.
 
-La decisión técnica más importante es transparente: los modelos supervisados complejos no demostraron suficiente ventaja individual, por lo que la versión final utiliza probabilidades jerárquicas calibradas junto con un ranking personalizado, reglas y features comerciales. Este enfoque es más defendible que presentar un modelo complejo sin mejora comprobada.
+La decisión técnica más importante es transparente: cada objetivo publica el ganador del gate reproducible, combinado con ranking personalizado, reglas y features comerciales. La demostración no infiere una familia fija ni presenta complejidad como sinónimo de evidencia.
 
 La siguiente fase recomendada es desplegar la Mesa comercial con autenticación, roles, observabilidad y pruebas de usabilidad con asesores reales, manteniendo congelada la lógica del motor durante la validación.

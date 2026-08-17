@@ -1,0 +1,54 @@
+{
+  "model_version": "nbo_v2_1",
+  "split": "test",
+  "historical_cutoff_policy": "Solo meses completos anteriores al evento; se excluyen evento y mes actual.",
+  "coverage": {
+    "accepted_test_events_considered": 9077,
+    "eligible_evaluable": 7444,
+    "rate": 0.8200947449597885
+  },
+  "ranking": {
+    "hit_at_1": 0.11042450295540032,
+    "hit_at_3": 0.33422890918860826,
+    "ndcg_at_3": 0.23704838846578588
+  },
+  "baselines": {
+    "global_popular": {
+      "hit_at_1": 0.10518538420204192,
+      "hit_at_3": 0.3119290703922622,
+      "ndcg_at_3": 0.22159040131601962
+    },
+    "segment_popular": {
+      "hit_at_1": 0.10236432025792584,
+      "hit_at_3": 0.31072004298764105,
+      "ndcg_at_3": 0.2191532285479225
+    },
+    "channel_popular": {
+      "hit_at_1": 0.09846856528747985,
+      "hit_at_3": 0.30521225147770015,
+      "ndcg_at_3": 0.21561230481548246
+    }
+  },
+  "ranking_gate": {
+    "passed": true,
+    "relative_ndcg_improvement": 0.06975928134956062
+  },
+  "business": {
+    "mt_capture_eligible": 1.0,
+    "mt_recommendation_share": 0.20553465878559915,
+    "mean_recommended_price": 136.10734819989258,
+    "mean_acceptance_probability": 0.4226398033350125,
+    "mean_sale_probability": 0.3593640811720225,
+    "route_home_completion_share": 0.997989545637314,
+    "route_mobile_completion_share": 0.9991289198606271
+  },
+  "diversity": {
+    "top1_unique_offers": 15,
+    "max_offer_share": 0.3002418054809242
+  },
+  "limitations": [
+    "La evaluación usa solo ofertas observadas por la política histórica y no identifica efectos causales.",
+    "El perfil de clientes es un resumen estático de seis meses, no un snapshot mensual perfecto.",
+    "Las metas MT hogar/móvil son referencias; estos datos no identifican el origen comercial de cada venta MT."
+  ]
+}

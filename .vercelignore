@@ -1,0 +1,16 @@
+tests
+docs
+assets
+reports
+tmp
+build
+*.ipynb
+*.pdf
+requirements-dev.lock
+clientes_limpio.csv
+catalogo_limpio.csv
+historial_limpio.csv
+artifacts/nbo.sqlite3
+artifacts/recomendaciones.csv
+artifacts/batch_smoke.csv
+artifacts/*.log

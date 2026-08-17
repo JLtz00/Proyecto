@@ -15,8 +15,10 @@ __pycache__/
 .ipynb_checkpoints/
 artifacts/*
 !artifacts/current.json
-!artifacts/nbo_v2/
-!artifacts/nbo_v2/**
+!artifacts/nbo_v2_1/
+!artifacts/nbo_v2_1/**
+!artifacts/evaluation_v2.json
+!artifacts/recomendaciones.report.json
 *.egg-info/
 .coverage
 htmlcov/

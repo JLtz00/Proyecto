@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "flask",
+  "fluid": true,
+  "installCommand": "pip install --disable-pip-version-check -r requirements-vercel.txt && pip install --disable-pip-version-check --no-deps .",
+  "functions": {
+    "app.py": {
+      "maxDuration": 300,
+      "excludeFiles": "{tests/**,docs/**,assets/**,reports/**,tmp/**,build/**,**/*.ipynb,**/*.pdf,requirements-dev.lock,artifacts/nbo.sqlite3,artifacts/recomendaciones.csv,artifacts/batch_smoke.csv,artifacts/*.log}"
+    }
+  }
+}

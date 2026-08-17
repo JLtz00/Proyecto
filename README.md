@@ -2,7 +2,7 @@
 
 Motor reproducible de Next Best Offer con reglas comerciales, ranking auditable, estado operacional closed-loop y una Mesa local para el asesor.
 
-La versión activa conserva los contratos `nbo_v2`, `features_v2`, `rules_v5`, `playbook_v2`, `decision_v4` y la API FastAPI pública `1.5.0`. La interfaz del asesor funciona directamente sobre el motor local: no necesita iniciar FastAPI ni conectarse a internet.
+La versión activa es `nbo_v2_1` y conserva los contratos `features_v2`, `rules_v5`, `playbook_v2`, `decision_v4` y la API FastAPI pública `1.5.0`. La interfaz del asesor funciona directamente sobre el motor local: no necesita iniciar FastAPI ni conectarse a internet.
 
 ## Inicio rápido
 
@@ -14,6 +14,14 @@ python -m pip install -e . --no-deps
 nbo-check
 nbo-advisor
 ```
+
+Para la presentación aislada y reiniciable:
+
+```powershell
+nbo-advisor --jury
+```
+
+Este comando abre `/jury`, crea una SQLite temporal por ejecución/reset y nunca escribe en `artifacts/nbo.sqlite3`. Las rutas de jurado devuelven `404` cuando se inicia la Mesa normal.
 
 La mesa escucha exclusivamente en `http://127.0.0.1:5000` y abre el navegador. Para evitar la apertura automática o elegir otro puerto:
 
@@ -39,6 +47,22 @@ La interfaz permite alternar entre tema claro y oscuro, y usa Jinja autoescapado
 
 Capturas reales: [estado vacío](assets/screenshots/advisor-empty.png), [cliente encontrado](assets/screenshots/advisor-found.png), [rechazo](assets/screenshots/advisor-rejection.png) y [activación](assets/screenshots/advisor-activation.png). La regeneración está descrita en [docs/capturas_asesor.md](docs/capturas_asesor.md).
 
+Respaldos del Modo Jurado: [inicio](assets/screenshots/jury-start.png), [aceptación](assets/screenshots/jury-acceptance.png), [activación](assets/screenshots/jury-activation.png), [rechazo](assets/screenshots/jury-rejection.png) y [evidencia](assets/screenshots/jury-evidence.png).
+
+### Publicación de consulta en Vercel
+
+El repositorio incluye una entrada WSGI en `app.py` y configuración en `vercel.json` para publicar exclusivamente la Mesa del Asesor. Esta variante:
+
+- registra solamente las rutas normales de la Mesa; `/jury` devuelve `404`;
+- permite buscar clientes y consultar recomendaciones, explicaciones y trazabilidad;
+- oculta y bloquea contacto, feedback, activación y recálculo;
+- escribe las decisiones técnicas en una SQLite temporal de `/tmp`, sin usar `artifacts/nbo.sqlite3`;
+- instala solo las dependencias de inferencia declaradas en `requirements-vercel.txt`.
+
+En Vercel, importa este repositorio, deja `.` como directorio raíz y selecciona el preset Flask. `vercel.json` contiene el resto de la configuración y `.python-version` fija Python 3.12 para ese entorno. Cada push a la rama conectada producirá un nuevo despliegue.
+
+Esta publicación es una demostración de consulta, no una mesa operacional multiusuario. La Mesa local conserva el flujo completo y su persistencia closed-loop.
+
 ## Motor y datos
 
 El motor usa los archivos maestros de `dataset/`:
@@ -49,14 +73,14 @@ El motor usa los archivos maestros de `dataset/`:
 | `catalogo_ofertas_entrega.csv` | 22 | Portafolio y atributos comerciales |
 | `historial_campanias.csv` | 300,112 | Contactabilidad, aceptación y rechazo |
 
-Los modelos entrenados viven en `artifacts/nbo_v2`; `artifacts/current.json` selecciona el champion. La base operacional predeterminada es `artifacts/nbo.sqlite3` y se crea automáticamente.
+Los modelos entrenados viven en `artifacts/nbo_v2_1`; `artifacts/current.json` selecciona el champion. La base operacional predeterminada es `artifacts/nbo.sqlite3` y se crea automáticamente.
 
 Comandos principales:
 
 ```powershell
 nbo-train
 nbo-evaluate
-nbo-evaluate-v3 --max-events 50 --bootstrap-iterations 20
+nbo-evaluate-v3 --bootstrap-iterations 1000
 nbo-batch --help
 nbo-report --help
 nbo-audit --help
@@ -91,7 +115,7 @@ Endpoints principales:
 ## Arquitectura
 
 ```text
-CSV maestros + artefactos nbo_v2
+CSV maestros + artefactos nbo_v2_1
               │
               ▼
      NBOEngine + rules_v5
@@ -122,7 +146,7 @@ La suite incluye motor, reglas, persistencia, FastAPI, Flask/HTMX, seguridad, cl
 
 ## Solución de problemas
 
-**El motor aparece como no disponible.** Ejecuta `nbo-check`. Confirma los tres CSV, `artifacts/current.json` y los archivos de `artifacts/nbo_v2/`.
+**El motor aparece como no disponible.** Ejecuta `nbo-check`. Confirma los tres CSV, `artifacts/current.json`, los archivos de `artifacts/nbo_v2_1/` y que evaluaciones, batch y manifiesto de evidencia tengan la misma versión.
 
 **El comando `nbo-advisor` no existe.** Reinstala el proyecto editable con `python -m pip install -e . --no-deps`.
 
@@ -134,8 +158,8 @@ La suite incluye motor, reglas, persistencia, FastAPI, Flask/HTMX, seguridad, cl
 
 **La activación devuelve 422.** Confirma que exista aceptación previa y que la orden o constancia no esté vacía.
 
-**Necesito reiniciar solo una demostración local.** Detén la mesa y elimina únicamente la base SQLite que hayas usado. No elimines `artifacts/nbo_v2` ni `artifacts/current.json`.
+**Necesito reiniciar la demostración.** Usa “Reiniciar demo” en `/jury`: genera otra SQLite temporal y elimina la anterior. No modifica la base operacional ni requiere volver a la terminal.
 
 ## Alcance
 
-La mesa asume un asesor por proceso, ejecución local en loopback y ausencia de autenticación en esta fase. CSRF, CSP y el aislamiento `127.0.0.1` son obligatorios. El estado fuente de los eventos de la interfaz permanece como `advisor_dashboard` para conservar las métricas históricas.
+La mesa asume un asesor por proceso, ejecución local en loopback y ausencia de autenticación en esta fase. CSRF, CSP y el aislamiento `127.0.0.1` son obligatorios. El Modo Jurado asume un único presentador y no representa autenticación, CRM integrado ni operación productiva. Es útil como copiloto y base para un piloto asistido.

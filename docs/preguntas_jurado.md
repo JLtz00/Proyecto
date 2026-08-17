@@ -2,7 +2,19 @@
 
 ## ¿Por qué es IA si el AUC está cerca de 0.5?
 
-El sistema compara modelos, calibra probabilidades y rechaza automáticamente un modelo complejo cuando no supera un baseline. La versión activa usa estimación jerárquica, ranking personalizado, reglas de elegibilidad y adaptación con feedback. El valor demostrado está en el ranking y el ciclo operacional, no en fingir discriminación inexistente.
+El sistema compara modelos, calibra probabilidades y rechaza automáticamente un modelo complejo cuando no supera un baseline. `nbo_v2_1` publica el ganador real por objetivo, ranking personalizado, reglas de elegibilidad y adaptación con feedback. Contacto tiene poca capacidad discriminativa y aceptación una señal moderada; no ocultamos esas limitaciones.
+
+## ¿Esto ya está listo para producción?
+
+No. Es un MVP útil como copiloto y como base de un piloto asistido. CRM/Customer 360, consentimiento, inventario/cobertura, órdenes y observabilidad aparecen expresamente como arquitectura futura.
+
+## ¿Las cifras de funnel son ventas reales?
+
+No. El bloque de funnel y economía está rotulado permanentemente “simulación, no ventas reales”, muestra supuestos y fórmula, y está separado de la evidencia operacional.
+
+## ¿Cómo demostrarían impacto?
+
+Con un piloto de 4–6 semanas, tratamiento y control, midiendo adopción, contacto, aceptación, activación, uplift, tiempo de gestión, reclamos, cancelación y valor económico.
 
 ## ¿Cómo saben que aumentará ventas?
 

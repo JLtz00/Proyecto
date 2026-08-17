@@ -9,7 +9,7 @@ project:
   playbook_version: playbook_v2
   decision_schema_version: decision_v4
   experiment_version: playbook_ab_v1
-  model_version: nbo_v2
+  model_version: nbo_v2_1
 
 validation:
   expected_customers: 100000
