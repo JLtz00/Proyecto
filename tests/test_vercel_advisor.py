@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 from pathlib import Path
 
@@ -106,3 +107,15 @@ def test_vercel_uses_automatic_install_and_minimal_requirements():
         "src/nbo/advisor_app/templates/**",
     ):
         assert required_path in included
+
+
+def test_advisor_ui_does_not_import_optional_http_client_at_module_load():
+    tree = ast.parse(Path("src/nbo/advisor_ui.py").read_text(encoding="utf-8"))
+    top_level_imports = {
+        alias.name
+        for node in tree.body
+        if isinstance(node, (ast.Import, ast.ImportFrom))
+        for alias in node.names
+    }
+
+    assert "httpx" not in top_level_imports

@@ -3,8 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-import httpx
-
 STAGE_LABELS = {
     "falta_internet_hogar": "Falta internet hogar",
     "falta_movil_postpago": "Falta móvil postpago",
@@ -53,6 +51,8 @@ class AdvisorApi:
         self.timeout = timeout
 
     def _request(self, method: str, path: str, **kwargs: Any) -> Any:
+        import httpx
+
         try:
             response = httpx.request(
                 method, f"{self.base_url}{path}", timeout=self.timeout, **kwargs,
