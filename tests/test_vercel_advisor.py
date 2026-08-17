@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from nbo.advisor_app import create_app
@@ -84,3 +85,14 @@ def test_public_assets_are_exact_copies_of_advisor_assets():
 
     for relative_path in relative_paths:
         assert (public / relative_path).read_bytes() == (source / relative_path).read_bytes()
+
+
+def test_vercel_uses_automatic_install_and_minimal_requirements():
+    config = json.loads(Path("vercel.json").read_text(encoding="utf-8"))
+    requirements = Path("requirements.txt").read_text(encoding="utf-8")
+    ignored = Path(".vercelignore").read_text(encoding="utf-8").splitlines()
+
+    assert "installCommand" not in config
+    assert "catboost" not in requirements.lower()
+    assert "requirements.lock" not in requirements
+    assert "pyproject.toml" in ignored and "requirements.lock" in ignored

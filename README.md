@@ -57,7 +57,7 @@ El repositorio incluye una entrada WSGI en `app.py` y configuración en `vercel.
 - permite buscar clientes y consultar recomendaciones, explicaciones y trazabilidad;
 - oculta y bloquea contacto, feedback, activación y recálculo;
 - escribe las decisiones técnicas en una SQLite temporal de `/tmp`, sin usar `artifacts/nbo.sqlite3`;
-- instala solo las dependencias de inferencia declaradas en `requirements-vercel.txt`.
+- instala automáticamente solo las dependencias de inferencia declaradas en `requirements.txt`.
 
 En Vercel, importa este repositorio, deja `.` como directorio raíz y selecciona el preset Flask. `vercel.json` contiene el resto de la configuración y `.python-version` fija Python 3.12 para ese entorno. Cada push a la rama conectada producirá un nuevo despliegue.
 

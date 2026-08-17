@@ -1,1 +1,10 @@
--r requirements.lock
+# Runtime mínimo para inferencia y la Mesa del Asesor publicada.
+# Desarrollo, entrenamiento y evaluación usan requirements-dev.lock.
+Flask==3.1.2
+Flask-WTF==1.2.2
+joblib==1.5.3
+numpy==2.4.6
+pandas==3.0.5
+pydantic==2.13.4
+PyYAML==6.0.3
+scikit-learn==1.9.0
