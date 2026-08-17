@@ -5,6 +5,7 @@
   "functions": {
     "app.py": {
       "maxDuration": 300,
+      "includeFiles": "{config/**,dataset/**,artifacts/current.json,artifacts/nbo_v2_1/**,src/nbo/advisor_app/templates/**}",
       "excludeFiles": "{tests/**,docs/**,assets/**,reports/**,tmp/**,build/**,**/*.ipynb,**/*.pdf,requirements-dev.lock,artifacts/nbo.sqlite3,artifacts/recomendaciones.csv,artifacts/batch_smoke.csv,artifacts/*.log}"
     }
   }

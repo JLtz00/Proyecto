@@ -96,3 +96,13 @@ def test_vercel_uses_automatic_install_and_minimal_requirements():
     assert "catboost" not in requirements.lower()
     assert "requirements.lock" not in requirements
     assert "pyproject.toml" in ignored and "requirements.lock" in ignored
+
+    included = config["functions"]["app.py"]["includeFiles"]
+    for required_path in (
+        "config/**",
+        "dataset/**",
+        "artifacts/current.json",
+        "artifacts/nbo_v2_1/**",
+        "src/nbo/advisor_app/templates/**",
+    ):
+        assert required_path in included
